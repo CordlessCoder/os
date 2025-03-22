@@ -11,7 +11,7 @@ pub unsafe fn panic(info: &PanicInfo) -> ! {
     // SAFETY: The panic may have happened inside a fmt::Display implementation,
     // which would leave the SpinLock locked forever.
     println!(fgcolor = LightRed, bgcolor = Black, "{info}");
-    loop {}
+    crate::hlt_loop()
 }
 /// # Safety
 /// The caller must ensure the SERIAL1 writer is not accessed by other threads when this function

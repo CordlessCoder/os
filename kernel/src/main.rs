@@ -13,6 +13,5 @@ pub extern "C" fn _start() -> ! {
     test_main();
 
     println!(fgcolor = LightCyan, "We didn't crash!");
-    #[allow(clippy::empty_loop)]
-    loop {}
+    kernel::hlt_loop()
 }

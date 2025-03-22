@@ -33,6 +33,14 @@ impl FrameBuffer {
     pub fn splat_row(&mut self, row: usize, data: ScreenChar) {
         self.set_row(row, [data; 80]);
     }
+    pub fn map_framebuffer(
+        &mut self,
+        cb: impl FnOnce(
+            [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+        ) -> [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    ) {
+        self.chars.as_mut_ptr().update(cb);
+    }
     pub fn copy_row(&mut self, from: usize, to: usize) {
         let data = self.read_row(from);
         self.set_row(to, data);

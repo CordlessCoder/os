@@ -58,11 +58,15 @@ impl Writer {
         }
     }
     pub fn new_line(&mut self) {
-        for row in 1..BUFFER_HEIGHT {
-            self.buf.copy_row(row, row - 1);
-        }
-        self.buf
-            .splat_row(BUFFER_HEIGHT - 1, self.with_current_color(b' '));
+        let clear = self.with_current_color(b' ');
+        self.buf.map_framebuffer(|mut buf| {
+            for row in 1..BUFFER_HEIGHT {
+                // self.buf.copy_row(row, row - 1);
+                buf[row - 1] = buf[row];
+            }
+            buf[BUFFER_HEIGHT - 1] = [clear; BUFFER_WIDTH];
+            buf
+        });
         self.column = 0;
     }
     pub fn fill_screen(&mut self, ascii: u8) {
