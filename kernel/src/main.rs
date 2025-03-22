@@ -9,13 +9,13 @@ use kernel::prelude::{vga_color::*, *};
 pub extern "C" fn _start() -> ! {
     kernel::init();
 
+    #[cfg(test)]
+    test_main();
+
     // trigger a page fault
     unsafe {
         *(0xdeadbeef as *mut u8) = 42;
     };
-
-    #[cfg(test)]
-    test_main();
 
     println!(fgcolor = LightCyan, "We didn't crash!");
     todo!()
