@@ -1,0 +1,13 @@
+[workspace]
+resolver = "3"
+
+members = ["spinlock", "kernel"]
+
+[profile.release]
+lto = true
+opt-level = 3
+panic = "abort"
+debug = "none"
+
+[profile.dev]
+debug = "full"
