@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 
-members = ["spinlock", "kernel"]
+members = ["spinlock", "kernel", "arrayvec"]
 default-members = ["kernel"]
 
 [profile.release]

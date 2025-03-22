@@ -25,11 +25,7 @@ pub unsafe fn panic(info: &PanicInfo) -> ! {
 
     // SAFETY: The panic may have happened inside a fmt::Display implementation,
     // which would leave the SpinLock locked forever.
-    let out = unsafe {
-        let out = &mut *SERIAL1.get_inner_mut();
-        let out = core::cell::LazyCell::force(out);
-        &mut *out.get()
-    };
+    let out = unsafe { &mut *SERIAL1.get_inner_mut() };
     _ = writeln!(out, "[failed]\n");
     _ = writeln!(out, "Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
