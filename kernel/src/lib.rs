@@ -14,7 +14,7 @@ pub mod prelude {
     pub use crate::serial::SERIAL1;
     pub use crate::vga::{
         ColorCode, VGA_OUT,
-        color::{BgColor, Blink, Color, FgColor, LightColor},
+        color::{Blink, Color, LightColor},
     };
     pub mod vga_color {
         use super::{Color, LightColor};
