@@ -1,11 +1,10 @@
-use core::cell::UnsafeCell;
-use spinlock::LazyLock;
+use spinlock::{LazyStatic, SpinLock};
 use uart_16550::SerialPort;
 
-pub static SERIAL1: LazyLock<SerialPort> = LazyLock::new(|| {
+pub static SERIAL1: LazyStatic<SpinLock<SerialPort>> = LazyStatic::new(|| {
     let mut serial_port = unsafe { SerialPort::new(0x3F8) };
     serial_port.init();
-    UnsafeCell::new(serial_port)
+    SpinLock::new(serial_port)
 });
 
 #[doc(hidden)]

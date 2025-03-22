@@ -29,12 +29,15 @@ impl Write for Writer {
 pub static VGA_OUT: SpinLock<Writer> = SpinLock::new(Writer::new(FrameBuffer::new(unsafe {
     NonNull::new_unchecked(0xb8000 as *mut _)
 })));
+pub fn init() {
+    VGA_OUT.lock().fill_screen(b' ');
+}
 
 impl Writer {
     pub const fn new(buf: FrameBuffer) -> Self {
         Self {
             column: 0,
-            color: ColorCode::YELLOW,
+            color: ColorCode::WHITE,
             buf,
         }
     }

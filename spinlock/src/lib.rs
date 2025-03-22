@@ -3,9 +3,7 @@ use core::ops::{Deref, DerefMut};
 use core::option::Option::{self, *};
 use core::sync::atomic::Ordering::*;
 use core::{cell::UnsafeCell, sync::atomic::AtomicBool};
-mod lazylock;
 mod lazystatic;
-pub use lazylock::*;
 pub use lazystatic::*;
 
 pub struct SpinLock<T> {

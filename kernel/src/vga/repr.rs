@@ -5,7 +5,7 @@ use super::color::{BgColor, Color, FgColor, LightColor};
 pub struct ColorCode(u8);
 
 impl ColorCode {
-    pub const YELLOW: Self = ColorCode((Color::Black as u8) << 4 | LightColor::Yellow as u8 | 0x8);
+    pub const WHITE: Self = ColorCode((Color::Black as u8) << 4 | LightColor::White as u8 | 0x8);
     pub fn new(foreground: impl FgColor, background: impl BgColor) -> Self {
         ColorCode(background.bg_repr() << 4 | foreground.fg_repr())
     }

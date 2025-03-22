@@ -27,6 +27,7 @@ pub mod prelude {
 
 pub fn init() {
     gdt::init();
+    vga::init();
     interrupts::init();
 }
 
