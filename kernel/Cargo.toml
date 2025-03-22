@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bootloader = "0.9"
+pic8259 = "0.11.0"
 spinlock = { version = "0.1.0", path = "../spinlock" }
 uart_16550 = { version = "0.3.2", features = ["nightly"] }
 volatile = "0.6.1"

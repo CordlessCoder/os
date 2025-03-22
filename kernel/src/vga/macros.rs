@@ -3,31 +3,41 @@ use core::fmt;
 
 #[macro_export]
 macro_rules! print {
-    (bgcolor = $bg:expr, $($arg:tt)*) => {
-        $(VGA_OUT.lock().color.set_bg($bg))?
-        $crate::print!($($arg)*)
+    (interrupts_disabled bgcolor = $bg:expr, $($arg:tt)*) => {
+        VGA_OUT.lock().color.set_bg($bg);
+        $crate::print!(interrupts_disabled $($arg)*);
     };
-    (fgcolor = $fg:expr, $($arg:tt)*) => {
-        $(VGA_OUT.lock().color.set_fg($fg))?
-        $crate::print!($($arg)*)
+    (interrupts_disabled fgcolor = $fg:expr, $($arg:tt)*) => {
+        VGA_OUT.lock().color.set_fg($fg);
+        $crate::print!(interrupts_disabled $($arg)*);
     };
-    ($($arg:tt)*) => ($crate::vga::macros::_print(format_args!($($arg)*)));
+    (interrupts_disabled $($arg:tt)*) => ($crate::vga::macros::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => {
+        ::x86_64::instructions::interrupts::without_interrupts(|| {
+            $crate::print!(interrupts_disabled $($arg)*);
+        })
+    }
 }
 
 #[macro_export]
 macro_rules! println {
-    (bgcolor = $bg:expr, $($arg:tt)*) => {
+    (interrupts_disabled bgcolor = $bg:expr, $($arg:tt)*) => {
         VGA_OUT.lock().color.set_bg($bg);
-        $crate::println!($($arg)*)
+        $crate::println!(interrupts_disabled $($arg)*)
     };
-    (fgcolor = $fg:expr, $($arg:tt)*) => {
+    (interrupts_disabled fgcolor = $fg:expr, $($arg:tt)*) => {
         VGA_OUT.lock().color.set_fg($fg);
-        $crate::println!($($arg)*)
+        $crate::println!(interrupts_disabled $($arg)*);
     };
+    (interrupts_disabled $($arg:tt)*) => {
+        $crate::print!(interrupts_disabled "{}\n", format_args!($($arg)*))
+    };
+    (interrupts_disabled) => ($crate::print!(interrupts_disabled "\n"));
     ($($arg:tt)*) => {
-        $crate::print!("{}\n", format_args!($($arg)*))
-    };
-    () => ($crate::print!("\n"));
+        ::x86_64::instructions::interrupts::without_interrupts(|| {
+            $crate::println!(interrupts_disabled $($arg)*);
+        })
+    }
 }
 
 #[doc(hidden)]

@@ -1,5 +1,5 @@
 use core::cell::UnsafeCell;
-use spinlock::lazylock::LazyLock;
+use spinlock::LazyLock;
 use uart_16550::SerialPort;
 
 pub static SERIAL1: LazyLock<SerialPort> = LazyLock::new(|| {
@@ -18,16 +18,27 @@ pub fn _print(args: ::core::fmt::Arguments) {
 /// Prints to the host through the serial interface.
 #[macro_export]
 macro_rules! serial_print {
-    ($($arg:tt)*) => {
+    (interrupts_disabled $($arg:tt)*) => {
         $crate::serial::_print(format_args!($($arg)*));
+    };
+    ($($arg:tt)*) => {
+        ::x86_64::instructions::interrupts::without_interrupts(|| {
+            $crate::serial::_print(format_args!($($arg)*));
+        })
     };
 }
 
 /// Prints to the host through the serial interface, appending a newline.
 #[macro_export]
 macro_rules! serial_println {
-    () => ($crate::serial_print!("\n"));
-    ($fmt:expr) => ($crate::serial_print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
-        concat!($fmt, "\n"), $($arg)*));
+    (interrupts_disabled) => (interrupts_disabled $crate::serial_print!("\n"));
+    (interrupts_disabled $fmt:expr) => ($crate::serial_print!(interrupts_disabled concat!($fmt, "\n")));
+    (interrupts_disabled $fmt:expr, $($arg:tt)*) => {
+        $crate::serial_print!(interrupts_disabled concat!($fmt, "\n"), $($arg)*);
+    };
+    ($($arg:tt)*) => {
+        ::x86_64::instructions::interrupts::without_interrupts(|| {
+            $crate::serial_println!(interrupts_disabled $($arg)*);
+        })
+    }
 }

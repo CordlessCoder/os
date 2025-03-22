@@ -1,20 +1,33 @@
-use crate::prelude::{vga_color::*, *};
-use spinlock::lazystatic::LazyStatic;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use pic8259::ChainedPics;
+use spinlock::{LazyStatic, SpinLock};
+use x86_64::structures::idt::InterruptDescriptorTable;
+mod handlers;
+
+pub static PICS: SpinLock<ChainedPics> =
+    SpinLock::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+pub const PIC_1_OFFSET: u8 = 32;
+pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 static IDT: LazyStatic<InterruptDescriptorTable> = LazyStatic::new(|| {
     let mut idt = InterruptDescriptorTable::new();
-    idt.breakpoint.set_handler_fn(breakpoint_handler);
+    idt.breakpoint.set_handler_fn(handlers::breakpoint_handler);
+    unsafe {
+        idt.double_fault
+            .set_handler_fn(handlers::double_fault_handler)
+            .set_stack_index(crate::gdt::DOUBLE_FAULT_IST_INDEX)
+    };
+    idt[InterruptIndex::Timer as u8].set_handler_fn(handlers::timer_interrupt_handler);
     idt
 });
 
-pub fn init_idt() {
+pub fn init() {
     IDT.load();
+    unsafe { PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
 }
 
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    println!(
-        fgcolor = LightRed,
-        "EXCEPTION: BREAKPOINT\n{:#?}", stack_frame
-    );
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum InterruptIndex {
+    Timer = PIC_1_OFFSET,
 }

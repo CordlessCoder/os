@@ -4,6 +4,7 @@
 #![cfg_attr(test, no_main)]
 #![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+pub mod gdt;
 pub mod interrupts;
 pub mod panic;
 pub mod qemu;
@@ -25,7 +26,8 @@ pub mod prelude {
 }
 
 pub fn init() {
-    interrupts::init_idt();
+    gdt::init();
+    interrupts::init();
 }
 
 /// Entry point for `cargo test`

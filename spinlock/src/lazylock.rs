@@ -3,10 +3,10 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{Guard, SpinLock};
+use crate::{SpinLock, SpinLockGuard};
 
 pub struct LazyLock<T, F = fn() -> UnsafeCell<T>>(SpinLock<LazyCell<UnsafeCell<T>, F>>);
-pub struct LazyLockGuard<'l, T, F>(Guard<'l, LazyCell<UnsafeCell<T>, F>>);
+pub struct LazyLockGuard<'l, T, F>(SpinLockGuard<'l, LazyCell<UnsafeCell<T>, F>>);
 
 impl<T, F: FnOnce() -> UnsafeCell<T>> LazyLock<T, F> {
     pub const fn new(compute: F) -> Self {

@@ -3,8 +3,10 @@ use core::ops::{Deref, DerefMut};
 use core::option::Option::{self, *};
 use core::sync::atomic::Ordering::*;
 use core::{cell::UnsafeCell, sync::atomic::AtomicBool};
-pub mod lazylock;
-pub mod lazystatic;
+mod lazylock;
+mod lazystatic;
+pub use lazylock::*;
+pub use lazystatic::*;
 
 pub struct SpinLock<T> {
     locked: AtomicBool,
@@ -13,7 +15,7 @@ pub struct SpinLock<T> {
 unsafe impl<T> Sync for SpinLock<T> where T: Send {}
 
 // SAFETY:The existence of a guard proves that we have successfully acquired the SpinLock
-pub struct Guard<'l, T> {
+pub struct SpinLockGuard<'l, T> {
     lock: &'l SpinLock<T>,
 }
 
@@ -24,11 +26,16 @@ impl<T> SpinLock<T> {
             value: UnsafeCell::new(value),
         }
     }
-    pub fn try_lock(&self) -> Option<Guard<'_, T>> {
-        let aquired = !self.locked.swap(true, Acquire);
-        aquired.then_some(Guard { lock: self })
+    pub fn try_lock(&self) -> Option<SpinLockGuard<'_, T>> {
+        if self.locked.swap(true, Acquire) {
+            return None;
+        }
+        Some(SpinLockGuard { lock: self })
     }
-    pub fn lock(&self) -> Guard<'_, T> {
+    pub fn locked(&self) -> bool {
+        self.locked.load(Acquire)
+    }
+    pub fn lock(&self) -> SpinLockGuard<'_, T> {
         loop {
             if let Some(guard) = self.try_lock() {
                 return guard;
@@ -44,13 +51,13 @@ impl<T> SpinLock<T> {
     }
 }
 
-impl<T> Drop for Guard<'_, T> {
+impl<T> Drop for SpinLockGuard<'_, T> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
     }
 }
 
-impl<T> Deref for Guard<'_, T> {
+impl<T> Deref for SpinLockGuard<'_, T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         // SAFETY:The existence of a guard proves that we have successfully acquired the SpinLock
@@ -58,15 +65,15 @@ impl<T> Deref for Guard<'_, T> {
     }
 }
 
-impl<T> DerefMut for Guard<'_, T> {
+impl<T> DerefMut for SpinLockGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // SAFETY:The existence of a guard proves that we have successfully acquired the SpinLock
         unsafe { &mut *self.lock.value.get() }
     }
 }
-unsafe impl<T> Send for Guard<'_, T> where T: Send {}
-unsafe impl<T> Sync for Guard<'_, T> where T: Sync {}
+unsafe impl<T> Send for SpinLockGuard<'_, T> where T: Send {}
+unsafe impl<T> Sync for SpinLockGuard<'_, T> where T: Sync {}
 
-impl<T> Guard<'_, T> {
+impl<T> SpinLockGuard<'_, T> {
     pub fn unlock(self) {}
 }

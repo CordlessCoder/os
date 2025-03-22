@@ -31,9 +31,19 @@ name = "kernel"
 version = "0.1.0"
 dependencies = [
  "bootloader",
+ "pic8259",
  "spinlock",
  "uart_16550",
  "volatile 0.6.1",
+ "x86_64",
+]
+
+[[package]]
+name = "pic8259"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62d9a86c292b165f757e47e7fd66855def189b2564609bc4203727b27c33db22"
+dependencies = [
  "x86_64",
 ]
 

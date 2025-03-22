@@ -12,11 +12,7 @@ pub extern "C" fn _start() -> ! {
     #[cfg(test)]
     test_main();
 
-    // trigger a page fault
-    unsafe {
-        *(0xdeadbeef as *mut u8) = 42;
-    };
-
     println!(fgcolor = LightCyan, "We didn't crash!");
-    todo!()
+    #[allow(clippy::empty_loop)]
+    loop {}
 }
