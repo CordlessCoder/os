@@ -82,10 +82,15 @@ fn test_println_many() {
 #[test_case]
 fn test_println_output() {
     use crate::prelude::*;
-    let s = "Some test string that fits on a single line";
-    println!("{}", s);
-    let row = VGA_OUT.lock().buf.read_row(BUFFER_HEIGHT - 2);
-    for (i, c) in s.chars().enumerate() {
-        assert_eq!(char::from(row[i].ascii), c);
-    }
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let mut writer = VGA_OUT.lock();
+        for _ in 0..80 {
+            let s = "Some test string that fits on a single line";
+            _ = writeln!(writer, "\n{}", s);
+            let row = writer.buf.read_row(BUFFER_HEIGHT - 2);
+            for (i, c) in s.chars().enumerate() {
+                assert_eq!(char::from(row[i].ascii), c);
+            }
+        }
+    })
 }
