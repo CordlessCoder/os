@@ -2,6 +2,7 @@
 resolver = "3"
 
 members = ["spinlock", "kernel"]
+default-members = ["kernel"]
 
 [profile.release]
 lto = true
