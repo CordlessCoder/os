@@ -6,6 +6,7 @@
 #![reexport_test_harness_main = "test_main"]
 pub mod gdt;
 pub mod interrupts;
+pub mod memory;
 pub mod panic;
 pub mod qemu;
 pub mod serial;
@@ -31,10 +32,14 @@ pub fn init() {
     interrupts::init();
 }
 
+#[cfg(test)]
+use bootloader::{BootInfo, entry_point};
+#[cfg(test)]
+entry_point!(main);
 /// Entry point for `cargo test`
 #[cfg(test)]
 #[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
+pub fn main(_boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
     hlt_loop()

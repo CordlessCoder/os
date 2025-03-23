@@ -3,6 +3,7 @@
 #![test_runner(kernel::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![no_main]
+use bootloader::{BootInfo, entry_point};
 use kernel::{
     prelude::*,
     qemu::{QemuExitCode, exit_qemu},
@@ -10,8 +11,8 @@ use kernel::{
 use spinlock::LazyStatic;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
+entry_point!(main);
+fn main(_: &'static BootInfo) -> ! {
     serial_print!("stack_overflow::stack_overflow...\t");
 
     kernel::gdt::init();

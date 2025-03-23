@@ -6,6 +6,7 @@ use crate::{
 use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
 use spinlock::{LazyStatic, SpinLock};
 use x86_64::structures::idt::InterruptStackFrame;
+use x86_64::structures::idt::PageFaultErrorCode;
 
 pub extern "x86-interrupt" fn breakpoint(stack_frame: InterruptStackFrame) {
     println!(
@@ -26,6 +27,21 @@ pub extern "x86-interrupt" fn timer_interrupt(_stack_frame: InterruptStackFrame)
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer as u8);
     }
+}
+
+pub extern "x86-interrupt" fn page_fault(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+
+    let color = VGA_OUT.lock().color;
+    println!(fgcolor = LightRed, bgcolor = Black, "EXCEPTION: PAGE FAULT");
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("Error Code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    VGA_OUT.lock().color = color;
+    crate::hlt_loop();
 }
 
 pub extern "x86-interrupt" fn keyboard_interrupt(_stack_frame: InterruptStackFrame) {

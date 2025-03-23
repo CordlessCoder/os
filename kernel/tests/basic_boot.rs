@@ -4,10 +4,11 @@
 #![reexport_test_harness_main = "test_main"]
 #![no_main]
 
+use bootloader::{BootInfo, entry_point};
 use kernel::prelude::*;
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
+entry_point!(main);
+fn main(_: &'static BootInfo) -> ! {
     test_main();
     unreachable!()
 }
