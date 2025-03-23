@@ -41,5 +41,8 @@ fn main(boot_info: &'static BootInfo) -> ! {
     test_main();
 
     println!(fgcolor = LightCyan, "We didn't crash!");
+    loop {
+        println!("-");
+    }
     kernel::hlt_loop()
 }

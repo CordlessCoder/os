@@ -1,5 +1,4 @@
 #![no_std]
-use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut};
 use core::option::Option::{self, *};
 use core::sync::atomic::Ordering::*;
@@ -48,7 +47,7 @@ unsafe impl<T, IH: InterruptHandlingStrategy> Sync for SpinLock<T, IH> where T: 
 // SAFETY:The existence of a guard proves that we have successfully acquired the SpinLock
 pub struct SpinLockGuard<'l, T, IH: InterruptHandlingStrategy> {
     lock: &'l SpinLock<T, IH>,
-    interrupt_state: MaybeUninit<IH::RestoreState>,
+    interrupt_state: Option<IH::RestoreState>,
 }
 
 impl<T> SpinLock<T, KeepInterrupts> {
@@ -82,7 +81,7 @@ impl<T, IH: InterruptHandlingStrategy> SpinLock<T, IH> {
         }
         Some(SpinLockGuard {
             lock: self,
-            interrupt_state: MaybeUninit::new(interrupt_state),
+            interrupt_state: Some(interrupt_state),
         })
     }
     pub fn locked(&self) -> bool {
@@ -107,9 +106,9 @@ impl<T, IH: InterruptHandlingStrategy> SpinLock<T, IH> {
 impl<T, IH: InterruptHandlingStrategy> Drop for SpinLockGuard<'_, T, IH> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
-        self.lock
-            .ih
-            .restore_state(unsafe { MaybeUninit::assume_init_read(&self.interrupt_state) });
+        if let Some(state) = self.interrupt_state.take() {
+            self.lock.ih.restore_state(state);
+        }
     }
 }
 
