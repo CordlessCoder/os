@@ -1,10 +1,10 @@
-use spinlock::{LazyStatic, SpinLock};
+use spinlock::{DisableInterrupts, LazyStatic, SpinLock};
 use uart_16550::SerialPort;
 
-pub static SERIAL1: LazyStatic<SpinLock<SerialPort>> = LazyStatic::new(|| {
+pub static SERIAL1: LazyStatic<SpinLock<SerialPort, DisableInterrupts>> = LazyStatic::new(|| {
     let mut serial_port = unsafe { SerialPort::new(0x3F8) };
     serial_port.init();
-    SpinLock::new(serial_port)
+    SpinLock::disable_interrupts(serial_port)
 });
 
 #[doc(hidden)]

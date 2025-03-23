@@ -6,7 +6,7 @@ use core::{fmt::Write, ptr::NonNull};
 
 pub use buffer::{BUFFER_HEIGHT, BUFFER_WIDTH, FrameBuffer};
 pub use repr::*;
-use spinlock::SpinLock;
+use spinlock::{DisableInterrupts, SpinLock};
 
 pub struct Writer {
     column: usize,
@@ -26,9 +26,10 @@ impl Write for Writer {
     }
 }
 
-pub static VGA_OUT: SpinLock<Writer> = SpinLock::new(Writer::new(FrameBuffer::new(unsafe {
-    NonNull::new_unchecked(0xb8000 as *mut _)
-})));
+pub static VGA_OUT: SpinLock<Writer, DisableInterrupts> =
+    SpinLock::disable_interrupts(Writer::new(FrameBuffer::new(unsafe {
+        NonNull::new_unchecked(0xb8000 as *mut _)
+    })));
 pub fn init() {
     VGA_OUT.lock().fill_screen(b' ');
 }
