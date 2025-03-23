@@ -7,7 +7,9 @@ edition = "2024"
 bootloader = { version = "0.9", features = ["map_physical_memory"] }
 pc-keyboard = "0.8.0"
 pic8259 = "0.11.0"
-spinlock = { version = "0.1.0", path = "../spinlock" }
+spinlock = { version = "0.1.0", path = "../spinlock", features = [
+  "x86_64_disable_interrupts",
+] }
 uart_16550 = { version = "0.3.2", features = ["nightly"] }
 volatile = "0.6.1"
 x86_64 = "0.15.2"
