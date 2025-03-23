@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
+x86_64_disable_interrupts = ["dep:x86_64"]
 
 [dependencies]
+x86_64 = { version = "0.15.2", features = [
+  "instructions",
+], default-features = false, optional = true }

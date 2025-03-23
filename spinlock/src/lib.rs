@@ -5,6 +5,8 @@ use core::sync::atomic::Ordering::*;
 use core::{cell::UnsafeCell, sync::atomic::AtomicBool};
 mod lazystatic;
 pub use lazystatic::*;
+#[cfg(feature = "x86_64_disable_interrupts")]
+use x86_64::instructions::interrupts;
 
 pub struct SpinLock<T> {
     locked: AtomicBool,
@@ -15,6 +17,8 @@ unsafe impl<T> Sync for SpinLock<T> where T: Send {}
 // SAFETY:The existence of a guard proves that we have successfully acquired the SpinLock
 pub struct SpinLockGuard<'l, T> {
     lock: &'l SpinLock<T>,
+    #[cfg(feature = "x86_64_disable_interrupts")]
+    restore_interrupts: bool,
 }
 
 impl<T> SpinLock<T> {
@@ -25,10 +29,18 @@ impl<T> SpinLock<T> {
         }
     }
     pub fn try_lock(&self) -> Option<SpinLockGuard<'_, T>> {
+        #[cfg(feature = "x86_64_disable_interrupts")]
+        let restore_interrupts = interrupts::are_enabled();
+        #[cfg(feature = "x86_64_disable_interrupts")]
+        interrupts::disable();
         if self.locked.swap(true, Acquire) {
             return None;
         }
-        Some(SpinLockGuard { lock: self })
+        Some(SpinLockGuard {
+            lock: self,
+            #[cfg(feature = "x86_64_disable_interrupts")]
+            restore_interrupts,
+        })
     }
     pub fn locked(&self) -> bool {
         self.locked.load(Acquire)
@@ -52,6 +64,10 @@ impl<T> SpinLock<T> {
 impl<T> Drop for SpinLockGuard<'_, T> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
+        #[cfg(feature = "x86_64_disable_interrupts")]
+        if self.restore_interrupts {
+            interrupts::enable();
+        }
     }
 }
 
