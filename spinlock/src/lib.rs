@@ -84,7 +84,7 @@ impl<T, IH: InterruptHandlingStrategy> SpinLock<T, IH> {
             interrupt_state: Some(interrupt_state),
         })
     }
-    pub fn locked(&self) -> bool {
+    pub fn is_locked(&self) -> bool {
         self.locked.load(Acquire)
     }
     pub fn lock(&self) -> SpinLockGuard<'_, T, IH> {

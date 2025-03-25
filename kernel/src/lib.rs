@@ -4,6 +4,7 @@
 #![cfg_attr(test, no_main)]
 #![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+extern crate alloc;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
@@ -25,22 +26,24 @@ pub mod prelude {
     }
     pub use crate::{print, println, serial_print, serial_println};
 }
+use bootloader::BootInfo;
 
-pub fn init() {
+pub fn init(boot_info: &'static BootInfo) {
     gdt::init();
     vga::init();
     interrupts::init();
+    memory::init(boot_info);
 }
 
 #[cfg(test)]
-use bootloader::{BootInfo, entry_point};
+use bootloader::entry_point;
 #[cfg(test)]
 entry_point!(main);
 /// Entry point for `cargo test`
 #[cfg(test)]
 #[unsafe(no_mangle)]
-pub fn main(_boot_info: &'static BootInfo) -> ! {
-    init();
+pub fn main(boot_info: &'static BootInfo) -> ! {
+    init(boot_info);
     test_main();
     hlt_loop()
 }

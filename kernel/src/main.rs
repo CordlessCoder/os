@@ -3,46 +3,42 @@
 #![reexport_test_harness_main = "test_main"]
 #![no_std]
 #![no_main]
+extern crate alloc;
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use bootloader::{BootInfo, entry_point};
-use kernel::{
-    memory,
-    prelude::{vga_color::*, *},
-};
-use x86_64::structures::paging::Translate;
+use kernel::prelude::{vga_color::*, *};
+// use x86_64::structures::paging::Translate;
 
 entry_point!(main);
 fn main(boot_info: &'static BootInfo) -> ! {
-    use x86_64::VirtAddr;
-    kernel::init();
+    kernel::init(boot_info);
 
-    let phys_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mapper = unsafe { kernel::memory::get_table(phys_offset) };
-    let _frame_alloc =
-        unsafe { memory::frame_alloc::BootInfoFrameAllocator::new(&boot_info.memory_map) };
+    let heap_value = Box::new(41);
+    println!("heap_value at {:p}", heap_value);
 
-    let addresses = [
-        // the identity-mapped vga buffer page
-        0xb8000,
-        // some code page
-        0x201008,
-        // some stack page
-        0x0100_0020_1a10,
-        // virtual address mapped to physical address 0
-        boot_info.physical_memory_offset,
-    ];
-
-    for &address in &addresses {
-        let virt = VirtAddr::new(address);
-        let phys = mapper.translate_addr(virt);
-        println!("{:?} -> {:?}", virt, phys);
+    // create a dynamically sized vector
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i);
     }
+    println!("vec at {:p}", vec.as_slice());
+
+    // create a reference counted vector -> will be freed when count reaches 0
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!(
+        "current reference count is {}",
+        Rc::strong_count(&cloned_reference)
+    );
+    core::mem::drop(reference_counted);
+    println!(
+        "reference count is {} now",
+        Rc::strong_count(&cloned_reference)
+    );
 
     #[cfg(test)]
     test_main();
 
     println!(fgcolor = LightCyan, "We didn't crash!");
-    loop {
-        println!("-");
-    }
     kernel::hlt_loop()
 }
