@@ -12,6 +12,8 @@ use kernel::prelude::{vga_color::*, *};
 entry_point!(main);
 fn main(boot_info: &'static BootInfo) -> ! {
     kernel::init(boot_info);
+    #[cfg(test)]
+    kernel::enable_test();
 
     let heap_value = Box::new(41);
     println!("heap_value at {:p}", heap_value);

@@ -1,9 +1,4 @@
-use core::{
-    alloc::{GlobalAlloc, Layout},
-    num::NonZeroUsize,
-    ptr::null_mut,
-};
-use spinlock::{DisableInterrupts, LazyStatic, SpinLock};
+use spinlock::SpinLock;
 use x86_64::{
     VirtAddr,
     structures::paging::{
@@ -11,10 +6,16 @@ use x86_64::{
     },
 };
 
-use super::bump_alloc::{BumpAlloc, SpinLockBump};
+use super::{
+    // bump_alloc::{BumpAlloc, SpinLockBump},
+    freelist_alloc::{FreeListAlloc, SpinLockFreelist},
+};
 
+// #[global_allocator]
+// static ALLOCATOR: SpinLockBump = SpinLockBump(SpinLock::disable_interrupts(BumpAlloc::empty()));
 #[global_allocator]
-static ALLOCATOR: SpinLockBump = SpinLockBump(SpinLock::disable_interrupts(BumpAlloc::empty()));
+static ALLOCATOR: SpinLockFreelist =
+    SpinLockFreelist(SpinLock::disable_interrupts(FreeListAlloc::empty()));
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
@@ -39,8 +40,11 @@ pub fn init_heap(
         unsafe { mapper.map_to(page, frame, flags, frame_alloc)?.flush() };
     }
 
+    // unsafe {
+    //     *ALLOCATOR.0.lock() = BumpAlloc::init(NonZeroUsize::new(HEAP_START).unwrap(), HEAP_SIZE);
+    // }
     unsafe {
-        *ALLOCATOR.0.lock() = BumpAlloc::init(NonZeroUsize::new(HEAP_START).unwrap(), HEAP_SIZE);
+        ALLOCATOR.0.lock().init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())

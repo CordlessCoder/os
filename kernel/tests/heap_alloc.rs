@@ -11,6 +11,7 @@ use kernel::memory::global_alloc::HEAP_SIZE;
 entry_point!(main);
 fn main(boot_info: &'static BootInfo) -> ! {
     kernel::init(boot_info);
+    kernel::enable_test();
     test_main();
     unreachable!()
 }
@@ -41,4 +42,14 @@ fn many_boxes() {
         let x = Box::new(i);
         assert_eq!(*x, i);
     }
+}
+
+#[test_case]
+fn many_boxes_long_lived() {
+    let long_lived = Box::new(1);
+    for i in 0..HEAP_SIZE {
+        let x = Box::new(i);
+        assert_eq!(*x, i);
+    }
+    assert_eq!(*long_lived, 1);
 }

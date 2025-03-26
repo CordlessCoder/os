@@ -35,6 +35,10 @@ pub fn init(boot_info: &'static BootInfo) {
     memory::init(boot_info);
 }
 
+pub fn enable_test() {
+    panic::set_qemu_test_panic();
+}
+
 #[cfg(test)]
 use bootloader::entry_point;
 #[cfg(test)]

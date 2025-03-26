@@ -1,5 +1,6 @@
 pub mod bump_alloc;
 pub mod frame_alloc;
+pub mod freelist_alloc;
 pub mod global_alloc;
 use bootloader::BootInfo;
 use core::sync::atomic::AtomicBool;

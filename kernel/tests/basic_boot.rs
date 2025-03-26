@@ -8,7 +8,9 @@ use bootloader::{BootInfo, entry_point};
 use kernel::prelude::*;
 
 entry_point!(main);
-fn main(_: &'static BootInfo) -> ! {
+fn main(boot_info: &'static BootInfo) -> ! {
+    kernel::init(boot_info);
+    kernel::enable_test();
     test_main();
     unreachable!()
 }

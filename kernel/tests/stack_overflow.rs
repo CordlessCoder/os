@@ -12,10 +12,11 @@ use spinlock::LazyStatic;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 entry_point!(main);
-fn main(_: &'static BootInfo) -> ! {
+fn main(boot_info: &'static BootInfo) -> ! {
     serial_print!("stack_overflow::stack_overflow...\t");
 
-    kernel::gdt::init();
+    kernel::init(boot_info);
+    kernel::enable_test();
     init_test_idt();
 
     // trigger a stack overflow
