@@ -36,30 +36,53 @@ impl FreeListAlloc {
     /// # Safety
     /// Must be called with an address range that the allocator can freely create mutable
     /// references into
-    pub unsafe fn init(&mut self, start: usize, len: usize) {
+    pub unsafe fn init(&mut self, start: usize, size: usize) {
         unsafe {
-            self.add_free_region(start, len);
+            self.add_free_region(start, size);
         }
     }
-    unsafe fn add_free_region(&mut self, addr: usize, len: usize) {
+    unsafe fn add_free_region(&mut self, addr: usize, mut size: usize) {
         assert_eq!(
             addr.next_multiple_of(mem::align_of::<ListNode>()),
             addr,
             "The free region must be well-aligned to hold a ListNode"
         );
         assert!(
-            len >= mem::size_of::<ListNode>(),
+            size >= mem::size_of::<ListNode>(),
             "The free region must be large enough to hold a ListNode"
         );
 
-        let mut node = ListNode::new(len);
-        node.next = self.head.next.take();
+        let mut closest_before = &mut self.head;
+        while let Some(mut node) = closest_before.next {
+            if node.addr().get() >= addr {
+                break;
+            }
+            closest_before = unsafe { node.as_mut() };
+        }
+        let mut merge_left = false;
+        if closest_before.end_addr() == addr {
+            merge_left = true;
+        }
+        if let Some(mut next) = closest_before.next {
+            let next = unsafe { next.as_mut() };
+            if next.start_addr() == addr + size {
+                size += next.size;
+                let next = next.next.take();
+                closest_before.next = next;
+            }
+        }
+        if merge_left {
+            closest_before.size += size;
+            return;
+        }
+        let mut node = ListNode::new(size);
+        node.next = closest_before.next.take();
         let node_ptr = addr as *mut ListNode;
         let node_ptr =
             NonNull::new(node_ptr).expect("add_free_region cannot be called with a null pointer");
         unsafe {
             node_ptr.write(node);
-            self.head.next = Some(node_ptr);
+            closest_before.next = Some(node_ptr);
         }
     }
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Option<*mut u8> {
@@ -128,6 +151,18 @@ impl FreeListAlloc {
     fn prepare_layout(mut layout: Layout) -> Layout {
         layout = layout.align_to(mem::size_of::<ListNode>()).unwrap();
         layout.pad_to_align()
+    }
+    pub fn debug(&self) {
+        use crate::prelude::*;
+        let mut regions = 0;
+        let mut free_mem = 0;
+        let mut cur = &self.head;
+        while let Some(node) = cur.next {
+            regions += 1;
+            cur = unsafe { node.as_ref() };
+            free_mem += cur.size;
+        }
+        serial_println!("Regions: {regions}. Free: {free_mem}")
     }
 }
 struct RegionAllocSplit {

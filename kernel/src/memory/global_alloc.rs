@@ -14,7 +14,7 @@ use super::{
 // #[global_allocator]
 // static ALLOCATOR: SpinLockBump = SpinLockBump(SpinLock::disable_interrupts(BumpAlloc::empty()));
 #[global_allocator]
-static ALLOCATOR: SpinLockFreelist =
+pub static ALLOCATOR: SpinLockFreelist =
     SpinLockFreelist(SpinLock::disable_interrupts(FreeListAlloc::empty()));
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;

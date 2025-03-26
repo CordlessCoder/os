@@ -4,7 +4,8 @@
 #![reexport_test_harness_main = "test_main"]
 #![no_main]
 extern crate alloc;
-use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::{boxed::Box, vec};
 use bootloader::{BootInfo, entry_point};
 use kernel::memory::global_alloc::HEAP_SIZE;
 
@@ -23,8 +24,6 @@ fn simple_allocation() {
     assert_eq!(*heap_value_1, 41);
     assert_eq!(*heap_value_2, 13);
 }
-
-use alloc::vec::Vec;
 
 #[test_case]
 fn large_vec() {
@@ -52,4 +51,16 @@ fn many_boxes_long_lived() {
         assert_eq!(*x, i);
     }
     assert_eq!(*long_lived, 1);
+}
+
+#[test_case]
+fn merge_small_allocs_to_large() {
+    let small = [0u64; 2];
+    let mut allocs = Vec::new();
+    for _ in (0..HEAP_SIZE).step_by(16 * 2) {
+        let x = Box::new(small);
+        allocs.push(x);
+    }
+    core::mem::drop(allocs);
+    let _large = vec![0u8; HEAP_SIZE];
 }
