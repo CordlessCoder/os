@@ -23,7 +23,7 @@ fn main(boot_info: &'static BootInfo) -> ! {
     for i in 0..500 {
         vec.push(i);
     }
-    println!("vec at {:p}", vec.as_slice());
+    println!("vec at {:p}", vec.as_ptr());
 
     // create a reference counted vector -> will be freed when count reaches 0
     let reference_counted = Rc::new(vec![1, 2, 3]);
