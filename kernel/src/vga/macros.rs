@@ -3,14 +3,14 @@ use core::fmt;
 
 #[macro_export]
 macro_rules! print {
-    (bgcolor = $bg:expr, $($arg:tt)*) => {
+    (bgcolor = $bg:expr, $($arg:tt)*) => {{
         VGA_OUT.lock().color.set_bg($bg);
-        $crate::print!(interrupts_disabled $($arg)*);
-    };
-    (fgcolor = $fg:expr, $($arg:tt)*) => {
+        $crate::print!($($arg)*)
+    }};
+    (fgcolor = $fg:expr, $($arg:tt)*) => {{
         VGA_OUT.lock().color.set_fg($fg);
-        $crate::print!(interrupts_disabled $($arg)*);
-    };
+        $crate::print!($($arg)*)
+    }};
     ($($arg:tt)*) => ($crate::vga::macros::_print(format_args!($($arg)*)));
 }
 

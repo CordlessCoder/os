@@ -11,6 +11,7 @@ pub mod memory;
 pub mod panic;
 pub mod qemu;
 pub mod serial;
+pub mod task;
 pub mod test;
 pub mod vga;
 pub mod prelude {
@@ -33,6 +34,7 @@ pub fn init(boot_info: &'static BootInfo) {
     vga::init();
     interrupts::init();
     memory::init(boot_info);
+    task::init();
 }
 
 pub fn enable_test() {

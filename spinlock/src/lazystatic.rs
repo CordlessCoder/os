@@ -19,6 +19,14 @@ union Storage<T, F> {
     data: ManuallyDrop<T>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum InitStatus {
+    Uninit = 0,
+    InProgress,
+    Init,
+}
+
 impl<T, F: FnOnce() -> T> LazyStatic<T, F> {
     pub const fn new(compute: F) -> Self {
         Self {
@@ -27,6 +35,18 @@ impl<T, F: FnOnce() -> T> LazyStatic<T, F> {
                 compute: ManuallyDrop::new(compute),
             }),
         }
+    }
+    pub fn status(&self) -> InitStatus {
+        match self.state.load(Acquire) {
+            0 => InitStatus::Uninit,
+            1 => InitStatus::InProgress,
+            2 => InitStatus::Init,
+            _ => unreachable!(),
+        }
+    }
+    pub fn get_if_init(&self) -> Option<&T> {
+        (self.status() == InitStatus::Init)
+            .then(|| unsafe { &*self.storage.get().as_ref().unwrap_unchecked().data })
     }
     pub fn force(&self) -> &T {
         loop {
