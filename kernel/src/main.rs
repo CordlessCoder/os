@@ -27,6 +27,7 @@ async fn print_every_second() {
     let mut ticks = Interval::new(1000);
     while let Some(tick) = ticks.next().await {
         println!(fgcolor = Yellow, "Tick {tick}!");
+        kernel::memory::global_alloc::ALLOCATOR.0.lock().debug();
     }
 }
 

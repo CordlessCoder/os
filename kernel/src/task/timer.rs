@@ -3,6 +3,7 @@ use alloc::{
     collections::{BTreeMap, btree_map::Entry},
 };
 use core::{
+    num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering::*},
     task::{Poll, Waker},
 };
@@ -37,14 +38,16 @@ pub fn tick_ms() {
 
 pub struct Interval {
     last: u64,
-    interval: u64,
+    interval: NonZeroU64,
 }
 
 impl Interval {
     pub fn new(ms: u64) -> Self {
         Self {
             last: MILLIS.load(Relaxed),
-            interval: ms,
+            interval: ms
+                .try_into()
+                .expect("Cannot create an interval that yields every 0 ms."),
         }
     }
     pub fn catch_up(&mut self) {
@@ -59,7 +62,7 @@ impl Stream for Interval {
         mut self: core::pin::Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> core::task::Poll<Option<Self::Item>> {
-        let timestamp = self.last + self.interval;
+        let timestamp = self.last + self.interval.get();
         if MILLIS.load(Relaxed) >= timestamp {
             self.last = timestamp;
             return Poll::Ready(Some(timestamp));
