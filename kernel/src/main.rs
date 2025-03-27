@@ -5,6 +5,7 @@
 #![no_main]
 extern crate alloc;
 
+use alloc::string::String;
 use bootloader::{BootInfo, entry_point};
 use futures_util::StreamExt;
 use kernel::{
@@ -12,7 +13,7 @@ use kernel::{
     task::{
         Task,
         executor::{Executor, Spawner},
-        keyboard::Keypresses,
+        keyboard::KeypressStream,
         timer::Interval,
     },
 };
@@ -20,9 +21,8 @@ use pc_keyboard::DecodedKey;
 use spinlock::LazyStatic;
 
 async fn print_keypresses() {
-    let mut keypresses = Keypresses::new();
-    loop {
-        let key = keypresses.next_keypress().await;
+    let mut keypresses = KeypressStream::new();
+    while let Some(key) = keypresses.next().await {
         match key {
             DecodedKey::Unicode(character) => println!(fgcolor = Blue, "{}", character),
             DecodedKey::RawKey(key) => println!(fgcolor = LightBlue, "{:?}", key),
@@ -35,6 +35,14 @@ async fn print_every_second() {
         println!(fgcolor = Yellow, "Tick {tick}!");
         kernel::memory::global_alloc::ALLOCATOR.0.lock().debug();
     }
+}
+
+async fn main() {
+    // let mut keypresses = Keypresses::new();
+    // keypresses.next_keypress()
+    // let mut buf = String::new();
+    SPAWNER.spawn(print_keypresses());
+    SPAWNER.spawn(print_every_second());
 }
 
 static SPAWNER: LazyStatic<Spawner> =
@@ -56,9 +64,4 @@ fn entrypoint(boot_info: &'static BootInfo) -> ! {
 
     println!(fgcolor = LightCyan, "Executor exited successfully");
     kernel::hlt_loop()
-}
-
-async fn main() {
-    SPAWNER.spawn(print_keypresses());
-    SPAWNER.spawn(print_every_second());
 }

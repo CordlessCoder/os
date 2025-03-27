@@ -1,6 +1,5 @@
-use core::task::Poll;
-
 use crate::prelude::{vga_color::*, *};
+use core::task::{Poll, ready};
 use crossbeam_queue::ArrayQueue;
 use futures_util::{Stream, StreamExt, task::AtomicWaker};
 use pc_keyboard::{DecodedKey, Keyboard, ScancodeSet1, layouts::Us104Key};
@@ -55,12 +54,12 @@ impl Stream for ScancodeStream {
         }
     }
 }
-pub struct Keypresses {
+pub struct KeypressStream {
     keyboard: Keyboard<Us104Key, ScancodeSet1>,
     scancode_stream: ScancodeStream,
 }
 
-impl Keypresses {
+impl KeypressStream {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let keyboard = Keyboard::new(
@@ -74,21 +73,26 @@ impl Keypresses {
             scancode_stream,
         }
     }
-    pub async fn next_keypress(&mut self) -> DecodedKey {
+}
+
+impl Stream for KeypressStream {
+    type Item = DecodedKey;
+
+    fn poll_next(
+        mut self: core::pin::Pin<&mut Self>,
+        cx: &mut core::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         loop {
-            let event = loop {
-                let sc = self
-                    .scancode_stream
-                    .next()
-                    .await
-                    .expect("Scancode stream is empty");
-                if let Ok(Some(event)) = self.keyboard.add_byte(sc) {
-                    break event;
-                }
+            let Some(sc) = ready!(self.scancode_stream.poll_next_unpin(cx)) else {
+                return Poll::Ready(None);
             };
-            if let Some(key) = self.keyboard.process_keyevent(event) {
-                return key;
-            }
+            let Ok(Some(event)) = self.keyboard.add_byte(sc) else {
+                continue;
+            };
+            let Some(key) = self.keyboard.process_keyevent(event) else {
+                continue;
+            };
+            break Poll::Ready(Some(key));
         }
     }
 }

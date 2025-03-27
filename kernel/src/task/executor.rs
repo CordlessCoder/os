@@ -100,9 +100,10 @@ impl Executor {
         while self.has_tasks() {
             while self.has_woken_tasks() {
                 self.poll_one();
+                self.poll_spawner();
             }
-            self.poll_spawner();
             self.sleep_if_idle();
+            self.poll_spawner();
         }
     }
     fn sleep_if_idle(&self) {

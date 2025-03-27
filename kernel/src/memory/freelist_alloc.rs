@@ -162,7 +162,7 @@ impl FreeListAlloc {
             cur = unsafe { node.as_ref() };
             free_mem += cur.size;
         }
-        serial_println!("Regions: {regions}. Free: {free_mem}")
+        serial_println!("Free regions: {regions}. Free memory: {free_mem}")
     }
 }
 struct RegionAllocSplit {
