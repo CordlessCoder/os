@@ -9,9 +9,15 @@ use bootloader::{BootInfo, entry_point};
 use futures_util::StreamExt;
 use kernel::{
     prelude::{vga_color::*, *},
-    task::{Task, executor::Executor, keyboard::Keypresses, timer::Interval},
+    task::{
+        Task,
+        executor::{Executor, Spawner},
+        keyboard::Keypresses,
+        timer::Interval,
+    },
 };
 use pc_keyboard::DecodedKey;
+use spinlock::LazyStatic;
 
 async fn print_keypresses() {
     let mut keypresses = Keypresses::new();
@@ -31,8 +37,11 @@ async fn print_every_second() {
     }
 }
 
-entry_point!(main);
-fn main(boot_info: &'static BootInfo) -> ! {
+static SPAWNER: LazyStatic<Spawner> =
+    LazyStatic::new(|| panic!("Attempted to use spawner before initializing executor"));
+
+entry_point!(entrypoint);
+fn entrypoint(boot_info: &'static BootInfo) -> ! {
     kernel::init(boot_info);
     #[cfg(test)]
     kernel::enable_test();
@@ -41,10 +50,15 @@ fn main(boot_info: &'static BootInfo) -> ! {
     test_main();
 
     let mut executor = Executor::new();
-    executor.spawn(Task::new(print_keypresses()));
-    executor.spawn(Task::new(print_every_second()));
+    SPAWNER.insert_if_uninit(executor.spawner()).unwrap();
+    executor.spawn(Task::new(main()));
     executor.run();
 
     println!(fgcolor = LightCyan, "Executor exited successfully");
     kernel::hlt_loop()
+}
+
+async fn main() {
+    SPAWNER.spawn(print_keypresses());
+    SPAWNER.spawn(print_every_second());
 }

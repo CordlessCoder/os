@@ -1,5 +1,5 @@
 use super::{Task, TaskId};
-use alloc::{collections::BTreeMap, sync::Arc, task::Wake};
+use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, task::Wake};
 use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
 use x86_64::instructions::interrupts;
@@ -8,6 +8,29 @@ pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
     queue: Arc<ArrayQueue<TaskId>>,
     wakers: BTreeMap<TaskId, Waker>,
+    spawner: Arc<ArrayQueue<Task>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Spawner {
+    queue: Arc<ArrayQueue<Task>>,
+}
+
+impl Spawner {
+    pub fn spawn_task(&self, task: Task) {
+        if self.queue.push(task).is_err() {
+            panic!(
+                "The spawner queue of the executor is full, the executor does not seem to be polling the spawner."
+            )
+        };
+    }
+    pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
+        let task = Task {
+            future: Box::pin(future),
+            id: TaskId::new(),
+        };
+        self.spawn_task(task);
+    }
 }
 
 impl Executor {
@@ -17,7 +40,12 @@ impl Executor {
             queue: Arc::new(ArrayQueue::new(64)),
             tasks: BTreeMap::new(),
             wakers: BTreeMap::new(),
+            spawner: Arc::new(ArrayQueue::new(64)),
         }
+    }
+    pub fn spawner(&self) -> Spawner {
+        let queue = self.spawner.clone();
+        Spawner { queue }
     }
     pub fn spawn(&mut self, task: Task) {
         let id = task.id;
@@ -32,12 +60,19 @@ impl Executor {
     pub fn has_woken_tasks(&self) -> bool {
         !self.queue.is_empty()
     }
+    pub fn poll_spawner(&mut self) {
+        while let Some(task) = self.spawner.pop() {
+            self.spawn(task);
+        }
+    }
     /// Returns false if there are no tasks to run, false otherwise
     pub fn poll_one(&mut self) -> bool {
+        self.poll_spawner();
         let Self {
             tasks,
             queue,
             wakers,
+            ..
         } = self;
         let Some(id) = queue.pop() else {
             return false;
@@ -61,10 +96,12 @@ impl Executor {
     }
     /// Will run the executor until all tasks exit
     pub fn run(&mut self) {
+        self.poll_spawner();
         while self.has_tasks() {
             while self.has_woken_tasks() {
                 self.poll_one();
             }
+            self.poll_spawner();
             self.sleep_if_idle();
         }
     }

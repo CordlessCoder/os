@@ -42,7 +42,8 @@ pub struct SpinLock<T, IH: InterruptHandlingStrategy = KeepInterrupts> {
     value: UnsafeCell<T>,
     ih: IH,
 }
-unsafe impl<T, IH: InterruptHandlingStrategy> Sync for SpinLock<T, IH> where T: Send {}
+unsafe impl<T, IH: InterruptHandlingStrategy> Sync for SpinLock<T, IH> where T: Sync {}
+unsafe impl<T, IH: InterruptHandlingStrategy> Send for SpinLock<T, IH> where T: Sync {}
 
 // SAFETY:The existence of a guard proves that we have successfully acquired the SpinLock
 pub struct SpinLockGuard<'l, T, IH: InterruptHandlingStrategy> {

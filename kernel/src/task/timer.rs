@@ -7,7 +7,7 @@ use core::{
     sync::atomic::{AtomicU64, Ordering::*},
     task::{Poll, Waker},
 };
-use futures_util::Stream;
+use futures_util::{Stream, StreamExt};
 use spinlock::{DisableInterrupts, SpinLock};
 
 static TIMER_WAKERS: SpinLock<BTreeMap<u64, NestedWaker>, DisableInterrupts> =
@@ -53,6 +53,23 @@ impl Interval {
     pub fn catch_up(&mut self) {
         self.last = MILLIS.load(Relaxed);
     }
+    pub async fn tick(&mut self) {
+        self.next().await;
+    }
+}
+
+pub async fn sleep(ms: u64) {
+    if ms == 0 {
+        return;
+    }
+    Interval::new(ms).tick().await;
+}
+
+pub async fn sleep_until(timestamp: u64) {
+    let Some(interval) = NonZeroU64::new(timestamp) else {
+        return;
+    };
+    Interval { last: 0, interval }.tick().await;
 }
 
 impl Stream for Interval {

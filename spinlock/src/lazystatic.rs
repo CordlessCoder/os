@@ -12,7 +12,8 @@ pub struct LazyStatic<T, F = fn() -> T> {
     state: AtomicU8,
     storage: UnsafeCell<Storage<T, F>>,
 }
-unsafe impl<T: Send, F> Sync for LazyStatic<T, F> {}
+unsafe impl<T: Sync, F> Sync for LazyStatic<T, F> {}
+unsafe impl<T: Sync, F> Send for LazyStatic<T, F> {}
 
 union Storage<T, F> {
     compute: ManuallyDrop<F>,
@@ -47,6 +48,25 @@ impl<T, F: FnOnce() -> T> LazyStatic<T, F> {
     pub fn get_if_init(&self) -> Option<&T> {
         (self.status() == InitStatus::Init)
             .then(|| unsafe { &*self.storage.get().as_ref().unwrap_unchecked().data })
+    }
+    pub fn insert_if_uninit(&self, val: T) -> Result<(), T> {
+        if self.state.compare_exchange(0, 1, Release, Acquire).is_err() {
+            return Err(val);
+        }
+        // SAFETY: At this point, state has been set to 1(In progress)
+        // and self.storage must hold a compute
+        unsafe {
+            // SAFETY: Materializing this reference is safe as we have locked the
+            // state and therefore no other threads will attempt to access self.storage
+            let storage = &mut *self.storage.get();
+            // SAFETY: The transition from 0(Uninit) -> 1(In Progress) only happens
+            // once, so we're allowed to take out the value
+            ManuallyDrop::drop(&mut storage.compute);
+            storage.data = ManuallyDrop::new(val);
+            // Release the data to all the other threads
+            self.state.store(2, Release);
+        }
+        Ok(())
     }
     pub fn force(&self) -> &T {
         loop {
