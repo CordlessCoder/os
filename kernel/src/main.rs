@@ -9,7 +9,7 @@ use bootloader::{BootInfo, entry_point};
 use futures_util::StreamExt;
 use kernel::{
     prelude::{vga_color::*, *},
-    task::{Task, executor::Executor, keyboard::Keypresses, timer::Ticks},
+    task::{Task, executor::Executor, keyboard::Keypresses, timer::Interval},
 };
 use pc_keyboard::DecodedKey;
 
@@ -23,8 +23,8 @@ async fn print_keypresses() {
         }
     }
 }
-async fn print_ticks() {
-    let mut ticks = Ticks::new();
+async fn print_every_second() {
+    let mut ticks = Interval::new(1000);
     while let Some(tick) = ticks.next().await {
         println!(fgcolor = Yellow, "Tick {tick}!");
     }
@@ -41,7 +41,7 @@ fn main(boot_info: &'static BootInfo) -> ! {
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(print_keypresses()));
-    executor.spawn(Task::new(print_ticks()));
+    executor.spawn(Task::new(print_every_second()));
     executor.run();
 
     println!(fgcolor = LightCyan, "Executor exited successfully");

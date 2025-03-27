@@ -1,6 +1,11 @@
+use core::time::Duration;
+
 use pic8259::ChainedPics;
 use spinlock::{LazyStatic, SpinLock};
-use x86_64::structures::idt::InterruptDescriptorTable;
+use x86_64::{
+    instructions::{interrupts, port::Port},
+    structures::idt::InterruptDescriptorTable,
+};
 mod handlers;
 
 pub static PICS: SpinLock<ChainedPics> =
@@ -22,9 +27,25 @@ static IDT: LazyStatic<InterruptDescriptorTable> = LazyStatic::new(|| {
     idt
 });
 
+fn set_timer_freq(tick_every: Duration) {
+    const OSCILLATOR_FREQ: f64 = 3579545. / 3.;
+    let oscillator_interval = Duration::from_secs(1).div_f64(OSCILLATOR_FREQ);
+    let counter = tick_every.div_duration_f32(oscillator_interval) as u16;
+    interrupts::without_interrupts(|| unsafe {
+        let mut command = Port::new(0x43);
+        command.write(0b0011_0110u8);
+        let mut timer = Port::new(0x40);
+        timer.write((counter & 0xFF) as u8);
+        timer.write((counter >> 8) as u8);
+    })
+}
+
 pub fn init() {
     IDT.load();
-    unsafe { PICS.lock().initialize() };
+    unsafe {
+        set_timer_freq(Duration::from_millis(1));
+        PICS.lock().initialize();
+    };
     x86_64::instructions::interrupts::enable();
 }
 
