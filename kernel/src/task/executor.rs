@@ -65,7 +65,7 @@ impl Executor {
             while self.has_woken_tasks() {
                 self.poll_one();
             }
-            x86_64::instructions::hlt();
+            self.sleep_if_idle();
         }
     }
     fn sleep_if_idle(&self) {

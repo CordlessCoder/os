@@ -3,8 +3,6 @@ use crate::{
     interrupts::PICS,
     prelude::{vga_color::*, *},
 };
-use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
-use spinlock::{LazyStatic, SpinLock};
 use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::structures::idt::PageFaultErrorCode;
 
@@ -45,29 +43,12 @@ pub extern "x86-interrupt" fn page_fault(
 }
 
 pub extern "x86-interrupt" fn keyboard_interrupt(_stack_frame: InterruptStackFrame) {
-    static KEYBOARD: LazyStatic<SpinLock<Keyboard<layouts::Us104Key, ScancodeSet1>>> =
-        LazyStatic::new(|| {
-            SpinLock::new(Keyboard::new(
-                ScancodeSet1::new(),
-                layouts::Us104Key,
-                HandleControl::Ignore,
-            ))
-        });
     use x86_64::instructions::port::Port;
 
     let mut port = Port::new(0x60);
-    // let mut keyboard = KEYBOARD.lock();
 
     let scancode: u8 = unsafe { port.read() };
     crate::task::keyboard::add_scancode(scancode);
-    // if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-    //     if let Some(key) = keyboard.process_keyevent(key_event) {
-    //         match key {
-    //             DecodedKey::Unicode(character) => print!("{}", character),
-    //             DecodedKey::RawKey(key) => print!("{:?}", key),
-    //         }
-    //     }
-    // }
 
     unsafe {
         PICS.lock()

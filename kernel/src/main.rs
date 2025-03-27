@@ -4,9 +4,7 @@
 #![no_std]
 #![no_main]
 extern crate alloc;
-use core::task::Waker;
 
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use bootloader::{BootInfo, entry_point};
 use kernel::{
     prelude::{vga_color::*, *},
