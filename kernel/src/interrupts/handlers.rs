@@ -20,7 +20,7 @@ pub extern "x86-interrupt" fn double_fault(
 }
 
 pub extern "x86-interrupt" fn timer_interrupt(_stack_frame: InterruptStackFrame) {
-    print!(".");
+    crate::task::timer::tick();
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer as u8);

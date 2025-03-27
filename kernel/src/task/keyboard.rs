@@ -2,7 +2,8 @@ use core::task::Poll;
 
 use crate::prelude::{vga_color::*, *};
 use crossbeam_queue::ArrayQueue;
-use futures_util::{Stream, task::AtomicWaker};
+use futures_util::{Stream, StreamExt, task::AtomicWaker};
+use pc_keyboard::{DecodedKey, Keyboard, ScancodeSet1, layouts::Us104Key};
 use spinlock::LazyStatic;
 
 pub static SCANCODE_QUEUE: LazyStatic<ArrayQueue<u8>> = LazyStatic::new(|| ArrayQueue::new(64));
@@ -54,24 +55,39 @@ impl Stream for ScancodeStream {
         }
     }
 }
-use futures_util::stream::StreamExt;
-use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
+pub struct Keypresses {
+    keyboard: Keyboard<Us104Key, ScancodeSet1>,
+    scancode_stream: ScancodeStream,
+}
 
-pub async fn print_keypresses() {
-    let mut scancodes = ScancodeStream::new();
-    let mut keyboard = Keyboard::new(
-        ScancodeSet1::new(),
-        layouts::Us104Key,
-        HandleControl::Ignore,
-    );
-
-    while let Some(scancode) = scancodes.next().await {
-        if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-            if let Some(key) = keyboard.process_keyevent(key_event) {
-                match key {
-                    DecodedKey::Unicode(character) => print!(fgcolor = Blue, "{}", character),
-                    DecodedKey::RawKey(key) => print!(fgcolor = LightBlue, "{:?}", key),
+impl Keypresses {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        let keyboard = Keyboard::new(
+            ScancodeSet1::new(),
+            Us104Key,
+            pc_keyboard::HandleControl::Ignore,
+        );
+        let scancode_stream = ScancodeStream::new();
+        Self {
+            keyboard,
+            scancode_stream,
+        }
+    }
+    pub async fn next_keypress(&mut self) -> DecodedKey {
+        loop {
+            let event = loop {
+                let sc = self
+                    .scancode_stream
+                    .next()
+                    .await
+                    .expect("Scancode stream is empty");
+                if let Ok(Some(event)) = self.keyboard.add_byte(sc) {
+                    break event;
                 }
+            };
+            if let Some(key) = self.keyboard.process_keyevent(event) {
+                return key;
             }
         }
     }

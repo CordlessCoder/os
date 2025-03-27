@@ -6,19 +6,28 @@
 extern crate alloc;
 
 use bootloader::{BootInfo, entry_point};
+use futures_util::StreamExt;
 use kernel::{
     prelude::{vga_color::*, *},
-    task::{Task, executor::Executor, keyboard},
+    task::{Task, executor::Executor, keyboard::Keypresses, timer::Ticks},
 };
-// use x86_64::structures::paging::Translate;
+use pc_keyboard::DecodedKey;
 
-async fn async_number() -> u32 {
-    42
+async fn print_keypresses() {
+    let mut keypresses = Keypresses::new();
+    loop {
+        let key = keypresses.next_keypress().await;
+        match key {
+            DecodedKey::Unicode(character) => println!(fgcolor = Blue, "{}", character),
+            DecodedKey::RawKey(key) => println!(fgcolor = LightBlue, "{:?}", key),
+        }
+    }
 }
-
-async fn example_task() {
-    let number = async_number().await;
-    println!("async number: {}", number);
+async fn print_ticks() {
+    let mut ticks = Ticks::new();
+    while let Some(tick) = ticks.next().await {
+        println!(fgcolor = Yellow, "Tick {tick}!");
+    }
 }
 
 entry_point!(main);
@@ -27,14 +36,14 @@ fn main(boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     kernel::enable_test();
 
-    let mut executor = Executor::new();
-    executor.spawn(Task::new(example_task()));
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.run();
-
     #[cfg(test)]
     test_main();
 
-    println!(fgcolor = LightCyan, "We didn't crash!");
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(print_keypresses()));
+    executor.spawn(Task::new(print_ticks()));
+    executor.run();
+
+    println!(fgcolor = LightCyan, "Executor exited successfully");
     kernel::hlt_loop()
 }

@@ -61,7 +61,7 @@ impl Executor {
     }
     /// Will run the executor until all tasks exit
     pub fn run(&mut self) {
-        loop {
+        while self.has_tasks() {
             while self.has_woken_tasks() {
                 self.poll_one();
             }

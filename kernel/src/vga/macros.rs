@@ -16,14 +16,14 @@ macro_rules! print {
 
 #[macro_export]
 macro_rules! println {
-    (bgcolor = $bg:expr, $($arg:tt)*) => {
+    (bgcolor = $bg:expr, $($arg:tt)*) => {{
         VGA_OUT.lock().color.set_bg($bg);
         $crate::println!($($arg)*)
-    };
-    (fgcolor = $fg:expr, $($arg:tt)*) => {
+    }};
+    (fgcolor = $fg:expr, $($arg:tt)*) => {{
         VGA_OUT.lock().color.set_fg($fg);
-        $crate::println!($($arg)*);
-    };
+        $crate::println!($($arg)*)
+    }};
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => {
         $crate::print!("{}\n", format_args!($($arg)*))
