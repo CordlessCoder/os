@@ -1,12 +1,18 @@
 use super::{Task, TaskId};
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, task::Wake};
+use alloc::{
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+    task::Wake,
+};
 use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
+use spinlock::{DisableInterrupts, SpinLock};
 use x86_64::instructions::interrupts;
 
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
-    queue: Arc<ArrayQueue<TaskId>>,
+    to_be_woken: Arc<SpinLock<BTreeSet<TaskId>, DisableInterrupts>>,
     wakers: BTreeMap<TaskId, Waker>,
     spawner: Arc<ArrayQueue<Task>>,
 }
@@ -37,10 +43,10 @@ impl Executor {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Executor {
         Executor {
-            queue: Arc::new(ArrayQueue::new(64)),
             tasks: BTreeMap::new(),
             wakers: BTreeMap::new(),
             spawner: Arc::new(ArrayQueue::new(64)),
+            to_be_woken: Arc::new(SpinLock::disable_interrupts(BTreeSet::new())),
         }
     }
     pub fn spawner(&self) -> Spawner {
@@ -52,13 +58,13 @@ impl Executor {
         if self.tasks.insert(id, task).is_some() {
             panic!("Task with {id:?} already in tasks.");
         }
-        self.queue.push(id).expect("queue full");
+        self.to_be_woken.lock().insert(id);
     }
     pub fn has_tasks(&self) -> bool {
         !self.tasks.is_empty()
     }
     pub fn has_woken_tasks(&self) -> bool {
-        !self.queue.is_empty()
+        !self.to_be_woken.lock().is_empty()
     }
     pub fn poll_spawner(&mut self) {
         while let Some(task) = self.spawner.pop() {
@@ -70,11 +76,11 @@ impl Executor {
         self.poll_spawner();
         let Self {
             tasks,
-            queue,
             wakers,
+            to_be_woken,
             ..
         } = self;
-        let Some(id) = queue.pop() else {
+        let Some(id) = to_be_woken.lock().pop_first() else {
             return false;
         };
         let Some(task) = tasks.get_mut(&id) else {
@@ -83,7 +89,7 @@ impl Executor {
         };
         let waker = wakers
             .entry(id)
-            .or_insert_with(|| TaskWaker::new_waker(id, queue.clone()));
+            .or_insert_with(|| TaskWaker::new_waker(id, to_be_woken.clone()));
         let mut cx = Context::from_waker(waker);
         match task.poll(&mut cx) {
             Poll::Ready(()) => {
@@ -98,17 +104,16 @@ impl Executor {
     pub fn run(&mut self) {
         self.poll_spawner();
         while self.has_tasks() {
-            while self.has_woken_tasks() {
-                self.poll_one();
-                self.poll_spawner();
+            while self.poll_one() {}
+            if self.has_tasks() {
+                self.sleep_if_idle();
             }
-            self.sleep_if_idle();
             self.poll_spawner();
         }
     }
     fn sleep_if_idle(&self) {
         interrupts::disable();
-        if self.queue.is_empty() {
+        if self.to_be_woken.lock().is_empty() {
             interrupts::enable_and_hlt();
         } else {
             interrupts::enable();
@@ -118,15 +123,18 @@ impl Executor {
 
 struct TaskWaker {
     id: TaskId,
-    queue: Arc<ArrayQueue<TaskId>>,
+    to_be_woken: Arc<SpinLock<BTreeSet<TaskId>, DisableInterrupts>>,
 }
 
 impl TaskWaker {
-    fn new_waker(id: TaskId, queue: Arc<ArrayQueue<TaskId>>) -> Waker {
-        Waker::from(Arc::new(TaskWaker { id, queue }))
+    fn new_waker(
+        id: TaskId,
+        to_be_woken: Arc<SpinLock<BTreeSet<TaskId>, DisableInterrupts>>,
+    ) -> Waker {
+        Waker::from(Arc::new(TaskWaker { id, to_be_woken }))
     }
     fn wake_task(&self) {
-        self.queue.push(self.id).expect("task queue full")
+        self.to_be_woken.lock().insert(self.id);
     }
 }
 

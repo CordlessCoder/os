@@ -44,14 +44,14 @@ pub struct Interval {
 impl Interval {
     pub fn new(ms: u64) -> Self {
         Self {
-            last: MILLIS.load(Relaxed),
+            last: MILLIS.load(Relaxed).wrapping_sub(ms),
             interval: ms
                 .try_into()
                 .expect("Cannot create an interval that yields every 0 ms."),
         }
     }
-    pub fn catch_up(&mut self) {
-        self.last = MILLIS.load(Relaxed);
+    pub fn reset(&mut self) {
+        self.last = MILLIS.load(Relaxed).wrapping_sub(self.interval.get());
     }
     pub async fn tick(&mut self) {
         self.next().await;
@@ -59,10 +59,7 @@ impl Interval {
 }
 
 pub async fn sleep(ms: u64) {
-    if ms == 0 {
-        return;
-    }
-    Interval::new(ms).tick().await;
+    sleep_until(MILLIS.load(Relaxed) + ms).await
 }
 
 pub async fn sleep_until(timestamp: u64) {
@@ -79,7 +76,7 @@ impl Stream for Interval {
         mut self: core::pin::Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> core::task::Poll<Option<Self::Item>> {
-        let timestamp = self.last + self.interval.get();
+        let timestamp = self.last.wrapping_add(self.interval.get());
         if MILLIS.load(Relaxed) >= timestamp {
             self.last = timestamp;
             return Poll::Ready(Some(timestamp));

@@ -7,11 +7,12 @@ use core::{fmt::Write, ptr::NonNull};
 pub use buffer::{BUFFER_HEIGHT, BUFFER_WIDTH, FrameBuffer};
 pub use repr::*;
 use spinlock::{DisableInterrupts, SpinLock};
+use x86_64::instructions::port::Port;
 
 pub struct Writer {
     column: usize,
     pub color: ColorCode,
-    buf: FrameBuffer,
+    pub buf: FrameBuffer,
 }
 
 impl Write for Writer {
@@ -22,14 +23,15 @@ impl Write for Writer {
                 _ => 0xfe,
             })
             .for_each(|b| self.write_byte(b));
+        self.move_cursor(BUFFER_HEIGHT as u8 - 1, self.column as u8);
         Ok(())
     }
 }
 
 pub static VGA_OUT: SpinLock<Writer, DisableInterrupts> =
-    SpinLock::disable_interrupts(Writer::new(FrameBuffer::new(unsafe {
-        NonNull::new_unchecked(0xb8000 as *mut _)
-    })));
+    SpinLock::disable_interrupts(Writer::new(unsafe {
+        FrameBuffer::new(NonNull::new_unchecked(0xb8000 as *mut _))
+    }));
 pub fn init() {
     VGA_OUT.lock().fill_screen(b' ');
 }
@@ -40,6 +42,17 @@ impl Writer {
             column: 0,
             color: ColorCode::WHITE,
             buf,
+        }
+    }
+    pub fn move_cursor(&mut self, row: u8, col: u8) {
+        let pos = row as u16 * BUFFER_WIDTH as u16 + col as u16;
+        unsafe {
+            let mut control = Port::new(0x3D4);
+            let mut data = Port::new(0x3d5);
+            control.write(0x0Fu8);
+            data.write(pos as u8);
+            control.write(0x0Eu8);
+            data.write((pos >> 8) as u8);
         }
     }
     pub fn write_byte(&mut self, byte: u8) {
@@ -72,6 +85,12 @@ impl Writer {
             buf
         });
         self.column = 0;
+    }
+    pub fn reset_column(&mut self) {
+        self.column = 0;
+    }
+    pub fn fill_row(&mut self, row: usize, ascii: u8) {
+        self.buf.splat_row(row, self.with_current_color(ascii));
     }
     pub fn fill_screen(&mut self, ascii: u8) {
         for row in 0..BUFFER_HEIGHT {

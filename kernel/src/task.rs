@@ -4,6 +4,7 @@ pub mod timer;
 
 use alloc::boxed::Box;
 use core::{
+    fmt::Debug,
     future::Future,
     pin::Pin,
     sync::atomic::AtomicU64,
@@ -24,6 +25,15 @@ impl TaskId {
 pub struct Task {
     id: TaskId,
     future: Pin<Box<dyn Future<Output = ()> + Send>>,
+}
+
+impl Debug for Task {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Task")
+            .field("id", &self.id)
+            .field("future", &core::any::type_name_of_val(&*self.future))
+            .finish()
+    }
 }
 
 impl Task {

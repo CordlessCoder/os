@@ -152,8 +152,7 @@ impl FreeListAlloc {
         layout = layout.align_to(mem::size_of::<ListNode>()).unwrap();
         layout.pad_to_align()
     }
-    pub fn debug(&self) {
-        use crate::prelude::*;
+    pub fn stats(&self) -> AllocStats {
         let mut regions = 0;
         let mut free_mem = 0;
         let mut cur = &self.head;
@@ -162,8 +161,16 @@ impl FreeListAlloc {
             cur = unsafe { node.as_ref() };
             free_mem += cur.size;
         }
-        serial_println!("Free regions: {regions}. Free memory: {free_mem}")
+        AllocStats {
+            free_regions: regions,
+            free_memory: free_mem,
+        }
     }
+}
+#[derive(Debug)]
+pub struct AllocStats {
+    pub free_regions: usize,
+    pub free_memory: usize,
 }
 struct RegionAllocSplit {
     /// The address and length of the start free node

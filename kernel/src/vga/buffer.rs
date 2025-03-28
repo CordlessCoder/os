@@ -12,8 +12,10 @@ pub struct FrameBuffer {
 }
 
 impl FrameBuffer {
+    /// # Safety
+    /// The provided pointer must be valid and well aligned for writes
     #[allow(private_interfaces)]
-    pub const fn new(ptr: NonNull<[[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT]>) -> Self {
+    pub const unsafe fn new(ptr: NonNull<[[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT]>) -> Self {
         unsafe {
             Self {
                 chars: VolatileRef::new_restricted(volatile::access::ReadWrite, ptr),

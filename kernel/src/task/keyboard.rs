@@ -1,8 +1,9 @@
 use crate::prelude::{vga_color::*, *};
 use core::task::{Poll, ready};
 use crossbeam_queue::ArrayQueue;
+use futures::stream::FusedStream;
 use futures_util::{Stream, StreamExt, task::AtomicWaker};
-use pc_keyboard::{DecodedKey, Keyboard, ScancodeSet1, layouts::Us104Key};
+use pc_keyboard::{DecodedKey, KeyEvent, Keyboard, ScancodeSet1, layouts::Us104Key};
 use spinlock::LazyStatic;
 
 pub static SCANCODE_QUEUE: LazyStatic<ArrayQueue<u8>> = LazyStatic::new(|| ArrayQueue::new(64));
@@ -55,7 +56,7 @@ impl Stream for ScancodeStream {
     }
 }
 pub struct KeypressStream {
-    keyboard: Keyboard<Us104Key, ScancodeSet1>,
+    pub keyboard: Keyboard<Us104Key, ScancodeSet1>,
     scancode_stream: ScancodeStream,
 }
 
@@ -76,7 +77,7 @@ impl KeypressStream {
 }
 
 impl Stream for KeypressStream {
-    type Item = DecodedKey;
+    type Item = (KeyEvent, Option<DecodedKey>);
 
     fn poll_next(
         mut self: core::pin::Pin<&mut Self>,
@@ -89,10 +90,13 @@ impl Stream for KeypressStream {
             let Ok(Some(event)) = self.keyboard.add_byte(sc) else {
                 continue;
             };
-            let Some(key) = self.keyboard.process_keyevent(event) else {
-                continue;
-            };
-            break Poll::Ready(Some(key));
+            let key = self.keyboard.process_keyevent(event.clone());
+            break Poll::Ready(Some((event, key)));
         }
+    }
+}
+impl FusedStream for KeypressStream {
+    fn is_terminated(&self) -> bool {
+        false
     }
 }

@@ -4,6 +4,7 @@
 #![no_std]
 #![no_main]
 extern crate alloc;
+mod snek;
 
 use alloc::string::String;
 use bootloader::{BootInfo, entry_point};
@@ -14,35 +15,76 @@ use kernel::{
         Task,
         executor::{Executor, Spawner},
         keyboard::KeypressStream,
-        timer::Interval,
     },
+    vga::{BUFFER_WIDTH, ScreenChar},
 };
-use pc_keyboard::DecodedKey;
+use pc_keyboard::{DecodedKey, KeyCode, KeyEvent, KeyState};
 use spinlock::LazyStatic;
 
-async fn print_keypresses() {
+async fn main() {
+    snek::run().await;
+    fn print(buf: &[u8]) {
+        let mut out = VGA_OUT.lock();
+        out.fill_screen(b' ');
+        let lines = buf.split(|&b| b == b'\n');
+        let lines = lines.flat_map(|line| {
+            line.chunks(BUFFER_WIDTH).chain(core::iter::repeat_n(
+                b"".as_slice(),
+                if line.is_empty() { 1 } else { 0 },
+            ))
+        });
+        let lines = [[b'-'; BUFFER_WIDTH].as_slice()].into_iter().chain(lines);
+        let color = out.color;
+        out.buf.map_framebuffer(move |mut buf| {
+            for (target, text) in buf.iter_mut().rev().zip(lines.rev()) {
+                serial_println!("{:?}", unsafe { core::str::from_utf8_unchecked(text) });
+                *target = [ScreenChar { ascii: b' ', color }; 80];
+                target
+                    .iter_mut()
+                    .zip(text)
+                    .for_each(|(out, &ascii)| *out = ScreenChar { ascii, color });
+            }
+            buf
+        });
+    }
     let mut keypresses = KeypressStream::new();
-    while let Some(key) = keypresses.next().await {
+    let mut buf = String::new();
+    print(buf.as_bytes());
+    while let Some((event, key)) = keypresses.next().await {
+        print(buf.as_bytes());
+        let mods = keypresses.keyboard.get_modifiers();
+        match event {
+            KeyEvent {
+                code: KeyCode::Backspace,
+                state: KeyState::Down,
+            } => {
+                buf.pop();
+                continue;
+            }
+            KeyEvent {
+                code: KeyCode::C, ..
+            } if mods.is_ctrl() => {
+                buf.clear();
+                continue;
+            }
+            _ => (),
+        }
         match key {
-            DecodedKey::Unicode(character) => println!(fgcolor = Blue, "{}", character),
-            DecodedKey::RawKey(key) => println!(fgcolor = LightBlue, "{:?}", key),
+            Some(DecodedKey::Unicode('\n')) if mods.is_shifted() => buf.push('\n'),
+            Some(DecodedKey::Unicode('\n')) => {
+                // Do eval
+                if buf.trim().eq_ignore_ascii_case("snek") {
+                    snek::run().await;
+                }
+                if buf.trim().eq_ignore_ascii_case("exit") {
+                    return;
+                }
+                buf.clear();
+            }
+            Some(DecodedKey::Unicode(c)) => buf.push(c),
+            _ => (),
         }
     }
-}
-async fn print_every_second() {
-    let mut ticks = Interval::new(1000);
-    while let Some(tick) = ticks.next().await {
-        println!(fgcolor = Yellow, "Tick {tick}!");
-        kernel::memory::global_alloc::ALLOCATOR.0.lock().debug();
-    }
-}
-
-async fn main() {
-    // let mut keypresses = Keypresses::new();
-    // keypresses.next_keypress()
-    // let mut buf = String::new();
-    SPAWNER.spawn(print_keypresses());
-    SPAWNER.spawn(print_every_second());
 }
 
 static SPAWNER: LazyStatic<Spawner> =

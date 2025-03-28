@@ -6,15 +6,20 @@ edition = "2024"
 [dependencies]
 bootloader = { version = "0.9", features = ["map_physical_memory"] }
 crossbeam-queue = { version = "0.3.12", default-features = false, features = ["alloc", "nightly"] }
-futures-util = { version = "0.3.31", default-features = false, features = ["alloc"] }
+futures = { version = "0.3.31", default-features = false, features = ["async-await"] }
+futures-util = { version = "0.3.31", default-features = false, features = ["alloc", "futures-macro"] }
 pc-keyboard = "0.8.0"
 pic8259 = "0.11.0"
+rand = { version = "0.9.0", default-features = false, features = ["small_rng"] }
 spinlock = { version = "0.1.0", path = "../spinlock", features = [
   "x86_64_disable_interrupts",
 ] }
 uart_16550 = { version = "0.3.2", features = ["nightly"] }
 volatile = "0.6.1"
 x86_64 = "0.15.2"
+
+[dev-dependencies]
+rand = { version = "0.9.0", default-features = false, features = ["thread_rng"] }
 
 [package.metadata.bootimage]
 run-args = [
