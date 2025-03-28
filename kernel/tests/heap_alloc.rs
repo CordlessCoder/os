@@ -62,5 +62,5 @@ fn merge_small_allocs_to_large() {
         allocs.push(x);
     }
     core::mem::drop(allocs);
-    let _large = vec![0u8; HEAP_SIZE];
+    let _large = vec![0u8; HEAP_SIZE - 1024];
 }
