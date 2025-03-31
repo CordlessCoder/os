@@ -5,6 +5,7 @@ use core::{
 };
 use spinlock::{DisableInterrupts, SpinLock};
 pub struct FreeListAlloc {
+    total: usize,
     head: ListNode,
 }
 
@@ -31,6 +32,7 @@ impl FreeListAlloc {
     pub const fn empty() -> Self {
         FreeListAlloc {
             head: ListNode::new(0),
+            total: 0,
         }
     }
     /// # Safety
@@ -40,6 +42,7 @@ impl FreeListAlloc {
         unsafe {
             self.add_free_region(start, size);
         }
+        self.total = size;
     }
     unsafe fn add_free_region(&mut self, addr: usize, mut size: usize) {
         assert_eq!(
@@ -84,6 +87,9 @@ impl FreeListAlloc {
             node_ptr.write(node);
             closest_before.next = Some(node_ptr);
         }
+    }
+    pub fn set_total(&mut self, free: usize) {
+        self.total = free;
     }
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Option<*mut u8> {
         let mut cur = &mut self.head as *mut ListNode;
@@ -164,6 +170,8 @@ impl FreeListAlloc {
         AllocStats {
             free_regions: regions,
             free_memory: free_mem,
+            total: self.total,
+            used: self.total.wrapping_sub(free_mem),
         }
     }
 }
@@ -171,6 +179,8 @@ impl FreeListAlloc {
 pub struct AllocStats {
     pub free_regions: usize,
     pub free_memory: usize,
+    pub total: usize,
+    pub used: usize,
 }
 struct RegionAllocSplit {
     /// The address and length of the start free node

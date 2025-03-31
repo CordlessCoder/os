@@ -18,7 +18,7 @@ fn seed() -> u64 {
 }
 
 fn random_position(mut rng: impl Rng) -> (i16, i16) {
-    (rng.random_range(0..=WIDTH), rng.random_range(0..=HEIGHT))
+    (rng.random_range(0..WIDTH), rng.random_range(0..HEIGHT))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -77,6 +77,7 @@ pub async fn run() {
             body.pop_back();
         }
         body.push_front(head);
+
         let mut out = VGA_OUT.lock();
         out.buf.map_framebuffer(|_| {
             let mut buf = [[ScreenChar {

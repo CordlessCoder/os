@@ -4,6 +4,7 @@
 #![no_std]
 #![no_main]
 extern crate alloc;
+mod flappy;
 mod snek;
 
 use alloc::string::String;
@@ -15,6 +16,7 @@ use kernel::{
         Task,
         executor::{Executor, Spawner},
         keyboard::KeypressStream,
+        timer::Interval,
     },
     vga::{BUFFER_WIDTH, ScreenChar},
 };
@@ -22,7 +24,6 @@ use pc_keyboard::{DecodedKey, KeyCode, KeyEvent, KeyState};
 use spinlock::LazyStatic;
 
 async fn main() {
-    snek::run().await;
     fn print(buf: &[u8]) {
         let mut out = VGA_OUT.lock();
         out.fill_screen(b' ');
@@ -37,7 +38,6 @@ async fn main() {
         let color = out.color;
         out.buf.map_framebuffer(move |mut buf| {
             for (target, text) in buf.iter_mut().rev().zip(lines.rev()) {
-                serial_println!("{:?}", unsafe { core::str::from_utf8_unchecked(text) });
                 *target = [ScreenChar { ascii: b' ', color }; 80];
                 target
                     .iter_mut()
@@ -72,9 +72,11 @@ async fn main() {
         match key {
             Some(DecodedKey::Unicode('\n')) if mods.is_shifted() => buf.push('\n'),
             Some(DecodedKey::Unicode('\n')) => {
-                // Do eval
                 if buf.trim().eq_ignore_ascii_case("snek") {
                     snek::run().await;
+                }
+                if buf.trim().eq_ignore_ascii_case("flappy") {
+                    flappy::run().await;
                 }
                 if buf.trim().eq_ignore_ascii_case("exit") {
                     return;
@@ -90,18 +92,27 @@ async fn main() {
 static SPAWNER: LazyStatic<Spawner> =
     LazyStatic::new(|| panic!("Attempted to use spawner before initializing executor"));
 
+async fn print_mem_stats() {
+    let mut timer = Interval::new(1000);
+    loop {
+        timer.tick().await;
+        let stats = kernel::memory::global_alloc::ALLOCATOR.0.lock().stats();
+        serial_println!("{stats:?}");
+    }
+}
+
 entry_point!(entrypoint);
 fn entrypoint(boot_info: &'static BootInfo) -> ! {
     kernel::init(boot_info);
     #[cfg(test)]
     kernel::enable_test();
-
     #[cfg(test)]
     test_main();
 
     let mut executor = Executor::new();
     SPAWNER.insert_if_uninit(executor.spawner()).unwrap();
     executor.spawn(Task::new(main()));
+    executor.spawn(Task::new(print_mem_stats()));
     executor.run();
 
     println!(fgcolor = LightCyan, "Executor exited successfully");
