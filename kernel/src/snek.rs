@@ -90,10 +90,10 @@ pub async fn run() {
             };
             buf[0] = [border; BUFFER_WIDTH];
             buf[BUFFER_HEIGHT - 1] = [border; BUFFER_WIDTH];
-            for y in 1..BUFFER_HEIGHT - 1 {
-                buf[y][0] = border;
-                buf[y][BUFFER_WIDTH - 1] = border;
-            }
+            buf.iter_mut().skip(1).for_each(|line| {
+                line[0] = border;
+                line[BUFFER_WIDTH - 1] = border;
+            });
             let mut paint_cell = |x: usize, y: usize, color, text: &[u8; 2]| {
                 buf[y][x * 2] = ScreenChar {
                     ascii: text[0],

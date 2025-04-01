@@ -1,4 +1,3 @@
-use alloc::collections::VecDeque;
 use alloc::format;
 use core::num::NonZeroU8;
 use core::pin::pin;
@@ -9,9 +8,6 @@ use kernel::vga::{BUFFER_HEIGHT, BUFFER_WIDTH, ScreenChar};
 use pc_keyboard::{KeyCode, KeyEvent, KeyState};
 use rand::{Rng, SeedableRng};
 use x86_64::instructions::random::RdRand;
-
-const WIDTH: i16 = BUFFER_WIDTH as i16;
-const HEIGHT: i16 = BUFFER_HEIGHT as i16;
 
 fn seed() -> u64 {
     RdRand::new()
@@ -24,13 +20,8 @@ pub async fn run() {
     const OBSTACLE_EVERY: usize = 30;
     const GRAVITY: f32 = 0.14;
 
-    fn new_obstacle_height(rng: &mut impl Rng) -> NonZeroU8 {
-        NonZeroU8::new(rng.random_range(2..(BUFFER_HEIGHT - GAP_WIDTH) as u8)).unwrap()
-    }
-
     let mut rng = rand::rngs::SmallRng::seed_from_u64(seed());
     let bg = ColorCode::new(Black, Blue);
-    let border = ColorCode::new(Black, LightGray);
     let bird_color = ColorCode::new(Black, Green);
     let obstacle_color = ColorCode::new(Black, Red);
 
@@ -69,10 +60,6 @@ pub async fn run() {
                         .chain(height as usize + GAP_WIDTH..BUFFER_HEIGHT)
                         .for_each(write_obstacle);
                 });
-            // (0..BUFFER_HEIGHT).for_each(|y| {
-            //     buf[y][0] = border;
-            //     buf[y][BUFFER_WIDTH - 1] = border;
-            // });
             buf[bird as usize][0] = ScreenChar {
                 color: bird_color,
                 ascii: b' ',
@@ -114,8 +101,8 @@ pub async fn run() {
                 },
             );
         }
-        bird = (bird as f32 + velocity).clamp(0., HEIGHT as f32);
-        if bird >= HEIGHT as f32 {
+        bird = (bird as f32 + velocity).clamp(0., BUFFER_HEIGHT as f32);
+        if bird >= BUFFER_HEIGHT as f32 {
             break 'game;
         }
         if let Some(height) = obstacles.iter().take(3).flatten().next() {
