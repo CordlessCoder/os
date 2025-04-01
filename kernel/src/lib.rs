@@ -5,6 +5,7 @@
 #![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 extern crate alloc;
+pub mod clock;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;

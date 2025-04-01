@@ -1,38 +1,41 @@
+use crate::clock::MS_CLOCK;
 use alloc::{
     boxed::Box,
     collections::{BTreeMap, btree_map::Entry},
 };
 use core::{
     num::NonZeroU64,
-    sync::atomic::{AtomicU64, Ordering::*},
+    sync::atomic::Ordering::*,
     task::{Poll, Waker},
 };
 use futures_util::{Stream, StreamExt};
 use spinlock::{DisableInterrupts, SpinLock};
 
+/// The wakers registered to fire when the
 static TIMER_WAKERS: SpinLock<BTreeMap<u64, NestedWaker>, DisableInterrupts> =
     SpinLock::disable_interrupts(BTreeMap::new());
-pub static MILLIS: AtomicU64 = AtomicU64::new(0);
 
 struct NestedWaker {
     waker: Waker,
     next: Option<Box<NestedWaker>>,
 }
 
-pub fn tick_ms() {
-    let timer = MILLIS.fetch_add(1, Relaxed);
+/// Wake any tasks registered to fire before the provided timestamp of the MS_CLOCK.
+pub fn wake_tasks(timestamp: u64) {
     let mut wakers = TIMER_WAKERS.lock();
-    let Some((&timespamp, _)) = wakers.first_key_value() else {
-        return;
-    };
-    if timespamp > timer {
-        return;
-    };
-    let (_, NestedWaker { waker, mut next }) = wakers.pop_first().unwrap();
-    waker.wake();
-    while let Some(NestedWaker { waker, next: node }) = next.map(|b| *b) {
+    loop {
+        let Some((&timespamp, _)) = wakers.first_key_value() else {
+            break;
+        };
+        if timespamp > timestamp {
+            break;
+        };
+        let (_, NestedWaker { waker, mut next }) = wakers.pop_first().unwrap();
         waker.wake();
-        next = node;
+        while let Some(NestedWaker { waker, next: node }) = next.map(|b| *b) {
+            waker.wake();
+            next = node;
+        }
     }
 }
 
@@ -44,14 +47,14 @@ pub struct Interval {
 impl Interval {
     pub fn new(ms: u64) -> Self {
         Self {
-            last: MILLIS.load(Relaxed).wrapping_sub(ms),
+            last: MS_CLOCK.load(Relaxed).wrapping_sub(ms),
             interval: ms
                 .try_into()
                 .expect("Cannot create an interval that yields every 0 ms."),
         }
     }
     pub fn reset(&mut self) {
-        self.last = MILLIS.load(Relaxed).wrapping_sub(self.interval.get());
+        self.last = MS_CLOCK.load(Relaxed).wrapping_sub(self.interval.get());
     }
     pub async fn tick(&mut self) {
         self.next().await;
@@ -59,7 +62,7 @@ impl Interval {
 }
 
 pub async fn sleep(ms: u64) {
-    sleep_until(MILLIS.load(Relaxed) + ms).await
+    sleep_until(MS_CLOCK.load(Relaxed) + ms).await
 }
 
 pub async fn sleep_until(timestamp: u64) {
@@ -77,7 +80,7 @@ impl Stream for Interval {
         cx: &mut core::task::Context<'_>,
     ) -> core::task::Poll<Option<Self::Item>> {
         let timestamp = self.last.wrapping_add(self.interval.get());
-        if MILLIS.load(Relaxed) >= timestamp {
+        if MS_CLOCK.load(Relaxed) >= timestamp {
             self.last = timestamp;
             return Poll::Ready(Some(timestamp));
         }
@@ -93,7 +96,7 @@ impl Stream for Interval {
                 entry.next = Some(Box::new(node))
             }
         };
-        if MILLIS.load(Relaxed) >= timestamp {
+        if MS_CLOCK.load(Relaxed) >= timestamp {
             self.last = timestamp;
             return Poll::Ready(Some(timestamp));
         }
