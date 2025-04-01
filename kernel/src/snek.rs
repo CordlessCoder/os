@@ -119,15 +119,16 @@ pub async fn run() {
             futures::select_biased!(
                 _ = timer => break,
                 key = keypresses.next() => {
+                    use KeyCode::* ;
                     let Some((KeyEvent { code, state: KeyState::Down }, _)) = key else {
                         continue
                     };
                     direction = match code {
-                        KeyCode::ArrowRight | KeyCode::D if old_dir != Direction::Left => Direction::Right,
-                        KeyCode::ArrowLeft | KeyCode::A if old_dir != Direction::Right => Direction::Left,
-                        KeyCode::ArrowUp | KeyCode::W if old_dir != Direction::Down => Direction::Up,
-                        KeyCode::ArrowDown | KeyCode::S if old_dir != Direction::Up => Direction::Down,
-                        KeyCode::Q => {
+                        ArrowRight | D | L if old_dir != Direction::Left => Direction::Right,
+                        ArrowLeft | A | H if old_dir != Direction::Right => Direction::Left,
+                        ArrowUp | W  | K if old_dir != Direction::Down => Direction::Up,
+                        ArrowDown | S | J if old_dir != Direction::Up => Direction::Down,
+                        Q => {
                             break 'game;
                         },
                         _ => continue

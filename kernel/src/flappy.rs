@@ -86,14 +86,15 @@ pub async fn run() {
             futures::select_biased!(
                 _ = timer => break,
                 key = keypresses.next() => {
+                    use KeyCode::*;
                     let Some((KeyEvent { code, state: KeyState::Down }, _)) = key else {
                         continue
                     };
                     match code {
-                        KeyCode::Spacebar => {
+                        Spacebar | NumpadEnter | LShift | RShift | ArrowUp => {
                             velocity = -1.2;
                         }
-                        KeyCode::Q => {
+                        Q => {
                             break 'game;
                         },
                         _ => continue

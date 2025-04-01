@@ -110,9 +110,12 @@ async fn shell() {
             }
             _ => (),
         }
+        let Some(key) = key else {
+            continue;
+        };
         match key {
-            Some(DecodedKey::Unicode('\n')) if mods.is_shifted() => buf.push('\n'),
-            Some(DecodedKey::Unicode('\n')) => {
+            DecodedKey::Unicode('\n') if mods.is_shifted() => buf.push('\n'),
+            DecodedKey::Unicode('\n') => {
                 match buf.trim() {
                     "snek" | "snake" => snek::run().await,
                     "flappy" | "fb" => flappy::run().await,
@@ -122,7 +125,7 @@ async fn shell() {
                 }
                 buf.clear();
             }
-            Some(DecodedKey::Unicode(c)) => buf.push(c),
+            DecodedKey::Unicode(c) => buf.push(c),
             _ => (),
         }
     }
