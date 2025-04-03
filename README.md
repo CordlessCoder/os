@@ -1,5 +1,34 @@
 An x86-64 kernel written in Rust, largely following the [Writing an OS in Rust](https://os.phil-opp.com/) blog by [Philipp Oppermann](https://github.com/phil-opp).
 
+## Building
+Requires Nightly Rust 2025-03-17 with the `rust-src` and `llvm-tools-preview`, 
+as specified in [`rust-toolchain.toml`](https://github.com/CordlessCoder/os/blob/main/rust-toolchain.toml).
+
+Install it with
+```bash
+rustup install nightly-2025-03-17
+rustup component add --toolchain nightly-2025-03-17-x86_64-unknown-linux-gnu rust-src llvm-tools-preview
+```
+
+Building the kernel requires the [`bootimage`](https://github.com/rust-osdev/bootimage) tool.
+Install it with `cargo install bootimage`.
+
+Build the kernel with
+```bash
+cargo bootimage --release
+```
+
+This leaves you with a raw disk image at `target/x86-64-bare/release/bootimage-kernel.bin`.
+You can boot this image with QEMU using
+```bash
+qemu-system-x86_64 -drive format=raw,file=target/x86-64-bare/release/bootimage-kernel.bin
+```
+
+Alternatively, you can use `bootimage` to automatically run the kernel in QEMU with
+```bash
+cargo run --release
+```
+
 # Features
 - Cooperative multitasking implemented on top of Rust async.
 - Global [millisecond-granular clock](https://github.com/CordlessCoder/os/blob/main/kernel/src/clock.rs)
