@@ -37,6 +37,11 @@ impl InterruptHandlingStrategy for KeepInterrupts {
     fn restore_state(&self, _state: Self::RestoreState) {}
 }
 
+/// A spinlock-backed Mutex, generic over the [InterruptHandlingStrategy]\(IHS\) it uses.
+///
+/// The default IHS used is [KeepInterrupts] which leaves interrupts as is. Enabling the `x86_64_disable_interrupts`
+/// Cargo feature allows using [DisableInterrupts] IHS to disable interrupts while the Mutex is
+/// locked.
 pub struct SpinLock<T, IH: InterruptHandlingStrategy = KeepInterrupts> {
     locked: AtomicBool,
     value: UnsafeCell<T>,

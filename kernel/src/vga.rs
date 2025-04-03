@@ -28,10 +28,15 @@ impl Write for Writer {
     }
 }
 
+/// The global VGA Text Mode output.
+///
+/// Implicitly locked by [print!](crate::print!)/[println!](crate::println!).
 pub static VGA_OUT: SpinLock<Writer, DisableInterrupts> =
     SpinLock::disable_interrupts(Writer::new(unsafe {
         FrameBuffer::new(NonNull::new_unchecked(0xb8000 as *mut _))
     }));
+
+/// Initialize the VGA Text Mode output
 pub fn init() {
     VGA_OUT.lock().fill_screen(b' ');
 }

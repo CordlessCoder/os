@@ -17,12 +17,13 @@ impl BootInfoFrameAllocator {
         BootInfoFrameAllocator { memory, next: 0 }
     }
 }
-// TODO: Write impl for FrameAllocator
 impl BootInfoFrameAllocator {
     fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
         let regions = self.memory.iter();
         let usable = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
-        let addr_ranges = usable.map(|r| r.range.start_addr()..r.range.end_addr());
+        let addr_ranges = usable
+            .map(|r| r.range)
+            .map(|r| r.start_addr()..r.end_addr());
         let frame_addrs = addr_ranges.flat_map(|r| r.step_by(4096));
         frame_addrs.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
     }

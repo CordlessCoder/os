@@ -1,6 +1,9 @@
 use spinlock::{DisableInterrupts, LazyStatic, SpinLock};
 use uart_16550::SerialPort;
 
+/// The global QEMU Serial Output.
+///
+/// Implicitly locked by [serial_print!](crate::serial_print!)/[serial_println!](crate::serial_println!).
 pub static SERIAL1: LazyStatic<SpinLock<SerialPort, DisableInterrupts>> = LazyStatic::new(|| {
     let mut serial_port = unsafe { SerialPort::new(0x3F8) };
     serial_port.init();

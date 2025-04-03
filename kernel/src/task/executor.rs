@@ -1,4 +1,4 @@
-use super::{Task, TaskId};
+use super::{Task, TaskId, TaskInnerFuture};
 use alloc::{
     boxed::Box,
     collections::{BTreeMap, BTreeSet},
@@ -11,18 +11,20 @@ use spinlock::{DisableInterrupts, SpinLock};
 use x86_64::instructions::interrupts;
 
 pub struct Executor {
-    tasks: BTreeMap<TaskId, Task>,
+    tasks: BTreeMap<TaskId, TaskInnerFuture>,
     to_be_woken: Arc<SpinLock<BTreeSet<TaskId>, DisableInterrupts>>,
     wakers: BTreeMap<TaskId, Waker>,
     spawner: Arc<ArrayQueue<Task>>,
 }
 
+/// Allows spawning tasks onto the Executor from nested tasks running within it.
 #[derive(Clone, Debug)]
 pub struct Spawner {
     queue: Arc<ArrayQueue<Task>>,
 }
 
 impl Spawner {
+    /// Sends a Task to be executed by the executor.
     pub fn spawn_task(&self, task: Task) {
         if self.queue.push(task).is_err() {
             panic!(
@@ -30,6 +32,7 @@ impl Spawner {
             )
         };
     }
+    /// Spawns a future into the Execcutor by wrapping it in a Task.
     pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
         let task = Task {
             future: Box::pin(future),
@@ -49,13 +52,14 @@ impl Executor {
             to_be_woken: Arc::new(SpinLock::disable_interrupts(BTreeSet::new())),
         }
     }
+    /// Create a spawner that will send tasks to this executor. This is a cheap operation.
     pub fn spawner(&self) -> Spawner {
         let queue = self.spawner.clone();
         Spawner { queue }
     }
     pub fn spawn(&mut self, task: Task) {
-        let id = task.id;
-        if self.tasks.insert(id, task).is_some() {
+        let Task { id, future } = task;
+        if self.tasks.insert(id, future).is_some() {
             panic!("Task with {id:?} already in tasks.");
         }
         self.to_be_woken.lock().insert(id);
@@ -66,6 +70,7 @@ impl Executor {
     pub fn has_woken_tasks(&self) -> bool {
         !self.to_be_woken.lock().is_empty()
     }
+    /// Spawns any tasks sent by the Spawner
     pub fn poll_spawner(&mut self) {
         while let Some(task) = self.spawner.pop() {
             self.spawn(task);
@@ -91,7 +96,7 @@ impl Executor {
             .entry(id)
             .or_insert_with(|| TaskWaker::new_waker(id, to_be_woken.clone()));
         let mut cx = Context::from_waker(waker);
-        match task.poll(&mut cx) {
+        match task.as_mut().poll(&mut cx) {
             Poll::Ready(()) => {
                 tasks.remove(&id);
                 wakers.remove(&id);

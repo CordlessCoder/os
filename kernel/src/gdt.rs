@@ -22,6 +22,7 @@ struct Gdt {
     tss_selector: SegmentSelector,
 }
 
+/// Initialize the GlobalDescriptorTable
 pub fn init() {
     use x86_64::instructions::segmentation::{CS, Segment};
     use x86_64::instructions::tables::load_tss;

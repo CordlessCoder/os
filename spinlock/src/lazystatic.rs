@@ -5,6 +5,7 @@ use core::{
     sync::atomic::{AtomicU8, Ordering::*},
 };
 
+/// A wrapper for on-demand *one-time* initialization of a value.
 pub struct LazyStatic<T, F = fn() -> T> {
     // 0 = Uninit
     // 1 = In Progress
@@ -68,6 +69,7 @@ impl<T, F: FnOnce() -> T> LazyStatic<T, F> {
         }
         Ok(())
     }
+    /// Force the inner value to be computed, and get a reference to it.
     pub fn force(&self) -> &T {
         loop {
             match self.state.compare_exchange(0, 1, Release, Acquire) {

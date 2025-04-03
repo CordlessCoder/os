@@ -1,6 +1,7 @@
 use crate::vga::VGA_OUT;
 use core::fmt;
 
+/// Print to the VGA Console.
 #[macro_export]
 macro_rules! print {
     (bgcolor = $bg:expr, $($arg:tt)*) => {{
@@ -14,6 +15,7 @@ macro_rules! print {
     ($($arg:tt)*) => ($crate::vga::macros::_print(format_args!($($arg)*)));
 }
 
+/// Print to the VGA Console.
 #[macro_export]
 macro_rules! println {
     (bgcolor = $bg:expr, $($arg:tt)*) => {{

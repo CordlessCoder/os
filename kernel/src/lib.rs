@@ -38,6 +38,7 @@ pub fn init(boot_info: &'static BootInfo) {
     task::init();
 }
 
+/// Redirect panic output to QEMU's serial/stdout.
 pub fn enable_test() {
     panic::set_qemu_test_panic();
 }

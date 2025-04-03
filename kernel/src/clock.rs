@@ -27,7 +27,7 @@ impl Instant {
     pub fn now() -> Self {
         Self(load_now())
     }
-    pub fn from_epoch(&self) -> u64 {
+    pub fn since_epoch(&self) -> u64 {
         self.0
     }
     pub fn elapsed_ms(&self) -> u64 {
@@ -38,7 +38,7 @@ impl Instant {
         Duration::from_millis(ms)
     }
     pub fn duration_since(&self, Self(earlier): Self) -> Duration {
-        let later = self.from_epoch();
+        let later = self.since_epoch();
         let difference = later.saturating_sub(earlier);
         Duration::from_millis(difference)
     }

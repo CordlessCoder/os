@@ -5,6 +5,7 @@ use core::{
 };
 
 use spinlock::{DisableInterrupts, SpinLock};
+/// A simple bump allocator implementation.
 pub struct BumpAlloc {
     start_addr: NonZeroUsize,
     len: usize,
@@ -13,6 +14,7 @@ pub struct BumpAlloc {
 }
 
 impl BumpAlloc {
+    /// Create a BumpAlloc with no backing memory.
     pub const fn empty() -> Self {
         BumpAlloc {
             start_addr: NonZeroUsize::new(1).unwrap(),

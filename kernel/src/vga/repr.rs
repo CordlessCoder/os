@@ -1,5 +1,6 @@
 use super::color::{BgColor, Color, FgColor, LightColor};
 
+/// A byte-encoded VGA Text Mode Color.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct ColorCode(u8);

@@ -13,6 +13,7 @@ pub static PICS: SpinLock<ChainedPics> =
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
+/// The global InterruptDescriptorTable.
 static IDT: LazyStatic<InterruptDescriptorTable> = LazyStatic::new(|| {
     let mut idt = InterruptDescriptorTable::new();
     idt.breakpoint.set_handler_fn(handlers::breakpoint);
@@ -27,6 +28,7 @@ static IDT: LazyStatic<InterruptDescriptorTable> = LazyStatic::new(|| {
     idt
 });
 
+/// Set the frequency of the Programmable Interrupt Timer.
 fn set_timer_freq(tick_every: Duration) {
     const OSCILLATOR_FREQ: f64 = 3579545. / 3.;
     let oscillator_interval = Duration::from_secs(1).div_f64(OSCILLATOR_FREQ);
@@ -40,6 +42,7 @@ fn set_timer_freq(tick_every: Duration) {
     })
 }
 
+/// Initialize interrupt handlers and the Programmable Interrupt Timer.
 pub fn init() {
     IDT.load();
     unsafe {

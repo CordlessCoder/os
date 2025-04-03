@@ -4,6 +4,7 @@ use core::{
     ptr::{self, NonNull},
 };
 use spinlock::{DisableInterrupts, SpinLock};
+/// A fairly simple FreeList-backed heap allocator.
 pub struct FreeListAlloc {
     total: usize,
     head: ListNode,
@@ -29,6 +30,7 @@ impl ListNode {
 }
 
 impl FreeListAlloc {
+    /// Create a FreeListAlloc with no backing memory.
     pub const fn empty() -> Self {
         FreeListAlloc {
             head: ListNode::new(0),

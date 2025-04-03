@@ -6,13 +6,9 @@ use x86_64::{
     },
 };
 
-use super::{
-    // bump_alloc::{BumpAlloc, SpinLockBump},
-    freelist_alloc::{FreeListAlloc, SpinLockFreelist},
-};
+use super::freelist_alloc::{FreeListAlloc, SpinLockFreelist};
 
-// #[global_allocator]
-// static ALLOCATOR: SpinLockBump = SpinLockBump(SpinLock::disable_interrupts(BumpAlloc::empty()));
+/// The global heap allocator, backed by a [free-list backed allocator](FreeListAlloc)
 #[global_allocator]
 pub static ALLOCATOR: SpinLockFreelist =
     SpinLockFreelist(SpinLock::disable_interrupts(FreeListAlloc::empty()));
@@ -20,6 +16,7 @@ pub static ALLOCATOR: SpinLockFreelist =
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 256 * 1024;
 
+/// Initialize the global heap allocator.
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_alloc: &mut impl FrameAllocator<Size4KiB>,

@@ -9,6 +9,7 @@ use x86_64::{
     structures::paging::{PageTable, mapper::OffsetPageTable},
 };
 
+/// Initialize the ALLOCATOR.
 pub fn init(boot_info: &'static BootInfo) {
     let phys_offset = VirtAddr::new(boot_info.physical_memory_offset);
     let mut mapper = unsafe { get_table(phys_offset) };

@@ -3,14 +3,9 @@ pub mod keyboard;
 pub mod timer;
 
 use alloc::boxed::Box;
-use core::{
-    fmt::Debug,
-    future::Future,
-    pin::Pin,
-    sync::atomic::AtomicU64,
-    task::{Context, Poll},
-};
+use core::{fmt::Debug, future::Future, pin::Pin, sync::atomic::AtomicU64};
 
+/// A unique ID generated when a Task is created.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct TaskId(u64);
@@ -22,9 +17,12 @@ impl TaskId {
     }
 }
 
+type TaskInnerFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
+
+/// Represents a Future with a unique ID that can be scheduled on the Executor.
 pub struct Task {
     id: TaskId,
-    future: Pin<Box<dyn Future<Output = ()> + Send>>,
+    future: TaskInnerFuture,
 }
 
 impl Debug for Task {
@@ -43,11 +41,9 @@ impl Task {
             id: TaskId::new(),
         }
     }
-    fn poll(&mut self, cx: &mut Context) -> Poll<()> {
-        self.future.as_mut().poll(cx)
-    }
 }
 
+/// Initialize task dependencies.
 pub fn init() {
     keyboard::SCANCODE_QUEUE.force();
 }
