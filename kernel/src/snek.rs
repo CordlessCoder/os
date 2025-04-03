@@ -108,7 +108,7 @@ pub async fn run() {
             for (x, y) in body.iter().skip(1) {
                 paint_cell(*x as usize, *y as usize, snake_color, b"  ");
             }
-            paint_cell(head.0 as usize, head.1 as usize, snake_color, b"()");
+            paint_cell(head.0 as usize, head.1 as usize, snake_color, b"<>");
 
             buf
         });
@@ -123,11 +123,12 @@ pub async fn run() {
                     let Some((KeyEvent { code, state: KeyState::Down }, _)) = key else {
                         continue
                     };
+                    let start = body.len() == 1;
                     direction = match code {
-                        ArrowRight | D | L if old_dir != Direction::Left => Direction::Right,
-                        ArrowLeft | A | H if old_dir != Direction::Right => Direction::Left,
-                        ArrowUp | W  | K if old_dir != Direction::Down => Direction::Up,
-                        ArrowDown | S | J if old_dir != Direction::Up => Direction::Down,
+                        ArrowRight | D | L if old_dir != Direction::Left || start => Direction::Right,
+                        ArrowLeft | A | H if old_dir != Direction::Right || start => Direction::Left,
+                        ArrowUp | W  | K if old_dir != Direction::Down || start => Direction::Up,
+                        ArrowDown | S | J if old_dir != Direction::Up || start => Direction::Down,
                         Q => {
                             break 'game;
                         },
