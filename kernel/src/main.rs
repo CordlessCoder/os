@@ -56,6 +56,7 @@ async fn main() {
 }
 
 async fn shell() {
+    VGA_OUT.lock().enable_cursor(14, 15);
     async fn print_and_wait_for_input(keypresses: &mut KeypressStream, text: &str) {
         print(format!("{text}\nPress any button to return to shell.\n").as_bytes());
         loop {
@@ -116,6 +117,7 @@ async fn shell() {
         match key {
             DecodedKey::Unicode('\n') if mods.is_shifted() => buf.push('\n'),
             DecodedKey::Unicode('\n') => {
+                VGA_OUT.lock().disable_cursor();
                 match buf.trim() {
                     "snek" | "snake" => snek::run().await,
                     "flappy" | "fb" => flappy::run().await,
@@ -123,6 +125,7 @@ async fn shell() {
                     "exit" => return,
                     _ => print_and_wait_for_input(&mut keypresses, "No such command, type").await,
                 }
+                VGA_OUT.lock().enable_cursor(14, 15);
                 buf.clear();
             }
             DecodedKey::Unicode(c) => buf.push(c),

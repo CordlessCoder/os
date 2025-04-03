@@ -2,6 +2,10 @@ use crate::vga::VGA_OUT;
 use core::fmt;
 
 /// Print to the VGA Console.
+///
+/// Allows for setting the foreground and background color by providing `fgcolor = COLOR` and
+/// `bgcolor = COLOR` arguments.
+/// Example: `print!(fgcolor = Red, "I am red!")`
 #[macro_export]
 macro_rules! print {
     (bgcolor = $bg:expr, $($arg:tt)*) => {{
@@ -16,6 +20,10 @@ macro_rules! print {
 }
 
 /// Print to the VGA Console.
+///
+/// Allows for setting the foreground and background color by providing `fgcolor = COLOR` and
+/// `bgcolor = COLOR` arguments.
+/// Example: `println!(fgcolor = Red, "I am red!")`
 #[macro_export]
 macro_rules! println {
     (bgcolor = $bg:expr, $($arg:tt)*) => {{

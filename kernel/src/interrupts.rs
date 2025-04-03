@@ -28,7 +28,7 @@ static IDT: LazyStatic<InterruptDescriptorTable> = LazyStatic::new(|| {
     idt
 });
 
-/// Set the frequency of the Programmable Interrupt Timer.
+/// Set the frequency of the Programmable Interval Timer.
 fn set_timer_freq(tick_every: Duration) {
     const OSCILLATOR_FREQ: f64 = 3579545. / 3.;
     let oscillator_interval = Duration::from_secs(1).div_f64(OSCILLATOR_FREQ);
@@ -42,7 +42,7 @@ fn set_timer_freq(tick_every: Duration) {
     })
 }
 
-/// Initialize interrupt handlers and the Programmable Interrupt Timer.
+/// Initialize interrupt handlers and the Programmable Interval Timer.
 pub fn init() {
     IDT.load();
     unsafe {

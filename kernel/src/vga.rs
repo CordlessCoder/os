@@ -49,11 +49,34 @@ impl Writer {
             buf,
         }
     }
+    pub fn enable_cursor(&mut self, start: u8, end: u8) {
+        let start = start.clamp(0, 15);
+        let end = end.clamp(0, 15);
+        unsafe {
+            let mut control: Port<u8> = Port::new(0x3D4);
+            let mut data: Port<u8> = Port::new(0x3D5);
+            control.write(0x0A_u8);
+            let b = data.read();
+            data.write((b & 0xC0_u8) | start);
+
+            control.write(0x0B_u8);
+            let b = data.read();
+            data.write((b & 0xE0_u8) | end);
+        }
+    }
+    pub fn disable_cursor(&mut self) {
+        unsafe {
+            let mut control = Port::new(0x3D4);
+            let mut data = Port::new(0x3D5);
+            control.write(0x0A_u8);
+            data.write(0x20_u8);
+        }
+    }
     pub fn move_cursor(&mut self, row: u8, col: u8) {
         let pos = row as u16 * BUFFER_WIDTH as u16 + col as u16;
         unsafe {
             let mut control = Port::new(0x3D4);
-            let mut data = Port::new(0x3d5);
+            let mut data = Port::new(0x3D5);
             control.write(0x0Fu8);
             data.write(pos as u8);
             control.write(0x0Eu8);

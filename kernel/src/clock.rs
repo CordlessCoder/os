@@ -5,7 +5,7 @@ use core::{
 
 /// A monotonically-nondecreasing millisecond-granular clock
 ///
-/// Gets incremented every millisecond by the Programmable Interrupt Timer
+/// Gets incremented every millisecond by the Programmable Interval Timer
 pub(crate) static MS_CLOCK: AtomicU64 = AtomicU64::new(0);
 
 /// Advances the global clock by 1 ms
