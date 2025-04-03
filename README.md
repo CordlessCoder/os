@@ -31,7 +31,9 @@ however VGA Text Mode is very limiting and everything must run in kernel space.
 As an example, I implemented a quick-and-dirty "shell"(glorified string literal matcher with rudimentary input handling) and two "apps".
 They are snake and flappy bird.
 
-
+<img alt="Snake" src="https://raw.githubusercontent.com/CordlessCoder/os/main/assets/snake.jpg">
+<img alt="Flappy bird" src="https://raw.githubusercontent.com/CordlessCoder/os/main/assets/flappy.png">
+<img alt="Help message" src="https://raw.githubusercontent.com/CordlessCoder/os/main/assets/help.png">
 
 ### Future work
 - VGA Graphics Mode
