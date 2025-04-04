@@ -6,10 +6,12 @@ use core::{
 use spinlock::{DisableInterrupts, SpinLock};
 /// A fairly simple FreeList-backed heap allocator.
 pub struct FreeListAlloc {
-    total: usize,
+    total_mem: usize,
+    allocs: usize,
     head: ListNode,
 }
 
+/// Represents a free region of memory in the freelist.
 struct ListNode {
     size: usize,
     next: Option<NonNull<ListNode>>,
@@ -34,7 +36,8 @@ impl FreeListAlloc {
     pub const fn empty() -> Self {
         FreeListAlloc {
             head: ListNode::new(0),
-            total: 0,
+            total_mem: 0,
+            allocs: 0,
         }
     }
     /// # Safety
@@ -44,8 +47,17 @@ impl FreeListAlloc {
         unsafe {
             self.add_free_region(start, size);
         }
-        self.total = size;
+        self.total_mem = size;
     }
+    /// Release a region of memory to the allocator and register a dealloction in the allocation
+    /// counter.
+    unsafe fn dealloc(&mut self, addr: usize, size: usize) {
+        self.allocs -= 1;
+        unsafe {
+            self.add_free_region(addr, size);
+        }
+    }
+    /// Release a region of memory to the allocator.
     unsafe fn add_free_region(&mut self, addr: usize, mut size: usize) {
         assert_eq!(
             addr.next_multiple_of(mem::align_of::<ListNode>()),
@@ -90,9 +102,11 @@ impl FreeListAlloc {
             closest_before.next = Some(node_ptr);
         }
     }
+    /// Sets the total size of the memory region for the allocator. Only used for [Self::stats].
     pub fn set_total(&mut self, free: usize) {
-        self.total = free;
+        self.total_mem = free;
     }
+    /// Request sufficient memory for the given allocation from the allocator.
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Option<*mut u8> {
         let mut cur = &mut self.head as *mut ListNode;
         unsafe {
@@ -115,11 +129,13 @@ impl FreeListAlloc {
                 if let Some((addr, len)) = end_node {
                     self.add_free_region(addr, len);
                 }
+                self.allocs += 1;
                 return Some(addr as *mut u8);
             }
         };
         None
     }
+    /// Handles the underlying logic for allocating memory in a free region.
     fn alloc_in_region(
         region: &ListNode,
         size: usize,
@@ -172,8 +188,9 @@ impl FreeListAlloc {
         AllocStats {
             free_regions: regions,
             free_memory: free_mem,
-            total: self.total,
-            used: self.total.wrapping_sub(free_mem),
+            total: self.total_mem,
+            used: self.total_mem.wrapping_sub(free_mem),
+            allocations: self.allocs,
         }
     }
 }
@@ -181,6 +198,7 @@ impl FreeListAlloc {
 pub struct AllocStats {
     pub free_regions: usize,
     pub free_memory: usize,
+    pub allocations: usize,
     pub total: usize,
     pub used: usize,
 }
@@ -208,7 +226,7 @@ unsafe impl GlobalAlloc for SpinLockFreelist {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: core::alloc::Layout) {
         let layout = FreeListAlloc::prepare_layout(layout);
         unsafe {
-            self.0.lock().add_free_region(ptr as usize, layout.size());
+            self.0.lock().dealloc(ptr as usize, layout.size());
         }
     }
 }
